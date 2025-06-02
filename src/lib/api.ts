@@ -1,147 +1,499 @@
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import { SimulationParametersInput, Simulation } from "@/types/simulation";
 
+// Configuration constants
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const DEFAULT_TIMEOUT = 10000; // 10 seconds
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second base delay
 
-// Generic API error class
+// Generic API error class compatible with Axios
 export class ApiError extends Error {
   constructor(
     public status: number,
     public message: string,
-    public data?: any
+    public data?: any,
+    public code?: string
   ) {
     super(message);
     this.name = "ApiError";
   }
 }
 
-// Generic API response handler
-async function handleApiResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new ApiError(
-      response.status,
-      errorData.message || `HTTP ${response.status}: ${response.statusText}`,
-      errorData
-    );
-  }
+// Logging utility
+const apiLogger = {
+  log: (level: "info" | "error" | "warn", message: string, data?: any) => {
+    if (process.env.NODE_ENV === "development") {
+      console[level](`[API] ${message}`, data || "");
+    }
+  },
+};
 
-  return response.json();
-}
+// Create Axios instance with base configuration
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: DEFAULT_TIMEOUT,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Request interceptor for logging and authentication
+api.interceptors.request.use(
+  (config) => {
+    // Add request ID for tracking
+    const requestId = Math.random().toString(36).substring(7);
+    config.headers["X-Request-ID"] = requestId;
+
+    // Log outgoing request
+    apiLogger.log(
+      "info",
+      `Request ${requestId}: ${config.method?.toUpperCase()} ${config.url}`,
+      {
+        headers: config.headers,
+        data: config.data,
+      }
+    );
+
+    // Add auth token if available (placeholder for future auth implementation)
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => {
+    apiLogger.log("error", "Request interceptor error", error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for error handling and logging
+api.interceptors.response.use(
+  (response: AxiosResponse) => {
+    const requestId = response.config.headers["X-Request-ID"];
+    apiLogger.log(
+      "info",
+      `Response ${requestId}: ${response.status} ${response.statusText}`,
+      {
+        data: response.data,
+      }
+    );
+    return response;
+  },
+  (error: AxiosError) => {
+    const requestId = error.config?.headers?.["X-Request-ID"];
+
+    // Transform Axios error to our ApiError format
+    if (error.response) {
+      // Server responded with error status
+      const errorData = error.response.data as any; // Type assertion for error response data
+      const apiError = new ApiError(
+        error.response.status,
+        errorData?.message ||
+          `HTTP ${error.response.status}: ${error.response.statusText}`,
+        errorData,
+        error.code
+      );
+
+      apiLogger.log(
+        "error",
+        `Response ${requestId}: ${apiError.status} ${apiError.message}`,
+        {
+          data: apiError.data,
+        }
+      );
+
+      return Promise.reject(apiError);
+    } else if (error.request) {
+      // Network error or timeout
+      const networkError = new ApiError(
+        0,
+        "Network error: Unable to reach the server",
+        null,
+        error.code
+      );
+
+      apiLogger.log("error", `Network error ${requestId}:`, error.message);
+
+      return Promise.reject(networkError);
+    } else {
+      // Request setup error
+      const setupError = new ApiError(
+        0,
+        `Request setup error: ${error.message}`,
+        null,
+        error.code
+      );
+
+      apiLogger.log("error", `Setup error ${requestId}:`, error.message);
+
+      return Promise.reject(setupError);
+    }
+  }
+);
+
+// Retry mechanism with exponential backoff
+const retryRequest = async <T>(
+  requestFn: () => Promise<AxiosResponse<T>>,
+  retries: number = MAX_RETRIES,
+  delay: number = RETRY_DELAY
+): Promise<AxiosResponse<T>> => {
+  try {
+    return await requestFn();
+  } catch (error) {
+    if (retries === 0) {
+      throw error;
+    }
+
+    // Only retry on network errors or 5xx server errors
+    const shouldRetry =
+      (error instanceof ApiError &&
+        (error.status === 0 || error.status >= 500)) ||
+      (error instanceof Error && error.message.includes("timeout"));
+
+    if (!shouldRetry) {
+      throw error;
+    }
+
+    apiLogger.log(
+      "warn",
+      `Retrying request in ${delay}ms. Retries left: ${retries - 1}`
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    return retryRequest(requestFn, retries - 1, delay * 2); // Exponential backoff
+  }
+};
 
 // API service for simulation operations
 export const simulationApi = {
   // Create a new simulation
-  async createSimulation(
-    name: string,
-    parameters: SimulationParametersInput
-  ): Promise<Simulation> {
-    const response = await fetch(`${API_BASE_URL}/simulations`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        parameters,
-      }),
-    });
-
-    return handleApiResponse<Simulation>(response);
+  createSimulation: (
+    data: { name: string; parameters: SimulationParametersInput },
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.post<Simulation>("/simulations", data, axiosConfig)
+    );
   },
 
   // Get all simulations
-  async getSimulations(): Promise<Simulation[]> {
-    const response = await fetch(`${API_BASE_URL}/simulations`);
-    return handleApiResponse<Simulation[]>(response);
+  getSimulations: (config?: AxiosRequestConfig & { signal?: AbortSignal }) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.get<Simulation[]>("/simulations", axiosConfig)
+    );
   },
 
   // Get a specific simulation by ID
-  async getSimulation(id: string): Promise<Simulation> {
-    const response = await fetch(`${API_BASE_URL}/simulations/${id}`);
-    return handleApiResponse<Simulation>(response);
+  getSimulation: (
+    id: string,
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.get<Simulation>(`/simulations/${id}`, axiosConfig)
+    );
+  },
+
+  // Update simulation parameters
+  updateSimulation: (
+    id: string,
+    data: { parameters: Partial<SimulationParametersInput> },
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.put<Simulation>(`/simulations/${id}`, data, axiosConfig)
+    );
+  },
+
+  // Start a simulation
+  startSimulation: (
+    id: string,
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.post<Simulation>(`/simulations/${id}/start`, {}, axiosConfig)
+    );
+  },
+
+  // Stop a simulation
+  stopSimulation: (
+    id: string,
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.post<Simulation>(`/simulations/${id}/stop`, {}, axiosConfig)
+    );
+  },
+
+  // Reset a simulation
+  resetSimulation: (
+    id: string,
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.post<Simulation>(`/simulations/${id}/reset`, {}, axiosConfig)
+    );
+  },
+
+  // Delete a simulation
+  deleteSimulation: (
+    id: string,
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.delete<void>(`/simulations/${id}`, axiosConfig)
+    );
+  },
+
+  // Step simulation forward (for manual control)
+  stepSimulation: (
+    id: string,
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.post<Simulation>(`/simulations/${id}/step`, {}, axiosConfig)
+    );
+  },
+
+  // Health check
+  healthCheck: (config?: AxiosRequestConfig & { signal?: AbortSignal }) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.get<{
+        status: string;
+        message: string;
+        timestamp: string;
+        database: {
+          connected: boolean;
+          state: string;
+        };
+      }>("/health", axiosConfig)
+    );
+  },
+};
+
+// Convenience methods with simplified API (backward compatibility)
+export const simulationApiSimple = {
+  // Create a new simulation
+  async createSimulation(
+    name: string,
+    parameters: SimulationParametersInput,
+    signal?: AbortSignal
+  ): Promise<Simulation> {
+    const response = await simulationApi.createSimulation(
+      { name, parameters },
+      { signal }
+    );
+    return response.data;
+  },
+
+  // Get all simulations
+  async getSimulations(signal?: AbortSignal): Promise<Simulation[]> {
+    const response = await simulationApi.getSimulations({ signal });
+    return response.data;
+  },
+
+  // Get a specific simulation by ID
+  async getSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
+    const response = await simulationApi.getSimulation(id, { signal });
+    return response.data;
   },
 
   // Update simulation parameters
   async updateSimulation(
     id: string,
-    parameters: Partial<SimulationParametersInput>
+    parameters: Partial<SimulationParametersInput>,
+    signal?: AbortSignal
   ): Promise<Simulation> {
-    const response = await fetch(`${API_BASE_URL}/simulations/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ parameters }),
-    });
-
-    return handleApiResponse<Simulation>(response);
+    const response = await simulationApi.updateSimulation(
+      id,
+      { parameters },
+      { signal }
+    );
+    return response.data;
   },
 
   // Start a simulation
-  async startSimulation(id: string): Promise<Simulation> {
-    const response = await fetch(`${API_BASE_URL}/simulations/${id}/start`, {
-      method: "POST",
-    });
-
-    return handleApiResponse<Simulation>(response);
+  async startSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
+    const response = await simulationApi.startSimulation(id, { signal });
+    return response.data;
   },
 
   // Stop a simulation
-  async stopSimulation(id: string): Promise<Simulation> {
-    const response = await fetch(`${API_BASE_URL}/simulations/${id}/stop`, {
-      method: "POST",
-    });
-
-    return handleApiResponse<Simulation>(response);
+  async stopSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
+    const response = await simulationApi.stopSimulation(id, { signal });
+    return response.data;
   },
 
   // Reset a simulation
-  async resetSimulation(id: string): Promise<Simulation> {
-    const response = await fetch(`${API_BASE_URL}/simulations/${id}/reset`, {
-      method: "POST",
-    });
-
-    return handleApiResponse<Simulation>(response);
+  async resetSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
+    const response = await simulationApi.resetSimulation(id, { signal });
+    return response.data;
   },
 
   // Delete a simulation
-  async deleteSimulation(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/simulations/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new ApiError(
-        response.status,
-        errorData.message || `Failed to delete simulation`,
-        errorData
-      );
-    }
+  async deleteSimulation(id: string, signal?: AbortSignal): Promise<void> {
+    await simulationApi.deleteSimulation(id, { signal });
   },
 
   // Step simulation forward (for manual control)
-  async stepSimulation(id: string): Promise<Simulation> {
-    const response = await fetch(`${API_BASE_URL}/simulations/${id}/step`, {
-      method: "POST",
-    });
-
-    return handleApiResponse<Simulation>(response);
+  async stepSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
+    const response = await simulationApi.stepSimulation(id, { signal });
+    return response.data;
   },
 
   // Health check
-  async healthCheck() {
-    const response = await fetch(`${API_BASE_URL}/health`);
-    return handleApiResponse<{
-      status: string;
-      message: string;
-      timestamp: string;
+  async healthCheck(signal?: AbortSignal) {
+    const response = await simulationApi.healthCheck({ signal });
+    return response.data;
+  },
+};
+
+// Mock API service for development and testing
+export const mockSimulationApi = {
+  // Mock data
+  mockSimulations: [
+    {
+      id: "mock-1",
+      name: "Test Simulation 1",
+      parameters: {
+        initialPopulation: 100,
+        growthRate: 0.1,
+        antibioticConcentration: 0.0,
+        mutationRate: 0.01,
+        duration: 100,
+        petriDishSize: 600,
+      },
+      currentState: {
+        generation: 0,
+        timeElapsed: 0,
+        bacteria: [],
+        isRunning: false,
+      },
+      statistics: {
+        totalPopulation: [100],
+        resistantCount: [20],
+        sensitiveCount: [80],
+        averageFitness: [0.75],
+        mutationEvents: [0],
+        generations: [0],
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ] as Simulation[],
+
+  // Mock methods
+  async createSimulation(
+    name: string,
+    parameters: SimulationParametersInput,
+    signal?: AbortSignal
+  ): Promise<Simulation> {
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
+
+    const newSimulation: Simulation = {
+      id: `mock-${Date.now()}`,
+      name,
+      parameters,
+      currentState: {
+        generation: 0,
+        timeElapsed: 0,
+        bacteria: [],
+        isRunning: false,
+      },
+      statistics: {
+        totalPopulation: [parameters.initialPopulation],
+        resistantCount: [Math.floor(parameters.initialPopulation * 0.2)],
+        sensitiveCount: [Math.floor(parameters.initialPopulation * 0.8)],
+        averageFitness: [0.75],
+        mutationEvents: [0],
+        generations: [0],
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.mockSimulations.push(newSimulation);
+    return newSimulation;
+  },
+
+  async getSimulations(signal?: AbortSignal): Promise<Simulation[]> {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return [...this.mockSimulations];
+  },
+
+  async getSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const simulation = this.mockSimulations.find((s) => s.id === id);
+    if (!simulation) {
+      throw new ApiError(404, `Simulation with id ${id} not found`);
+    }
+    return simulation;
+  },
+
+  async deleteSimulation(id: string, signal?: AbortSignal): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const index = this.mockSimulations.findIndex((s) => s.id === id);
+    if (index === -1) {
+      throw new ApiError(404, `Simulation with id ${id} not found`);
+    }
+    this.mockSimulations.splice(index, 1);
+  },
+
+  async healthCheck(signal?: AbortSignal) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return {
+      status: "healthy",
+      message: "Mock API service is running",
+      timestamp: new Date().toISOString(),
       database: {
-        connected: boolean;
-        state: string;
-      };
-    }>(response);
+        connected: true,
+        state: "ready",
+      },
+    };
   },
 };
 
@@ -158,5 +510,23 @@ export function getErrorMessage(error: unknown): string {
 
 // Utility function to check if error is network-related
 export function isNetworkError(error: unknown): boolean {
-  return error instanceof TypeError && error.message.includes("fetch");
+  return error instanceof ApiError && error.status === 0;
 }
+
+// Utility function to check if error is server-related
+export function isServerError(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 500;
+}
+
+// Utility function to check if error is client-related
+export function isClientError(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500;
+}
+
+// Request cancellation utility
+export function createAbortController(): AbortController {
+  return new AbortController();
+}
+
+// Export default as the simple API for backward compatibility
+export default simulationApiSimple;

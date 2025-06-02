@@ -5,7 +5,10 @@ import {
   SimulationState,
   Bacterium,
 } from "@/types/simulation";
-import { simulationApi, getErrorMessage, isNetworkError } from "@/lib/api";
+import simulationApiSimple, {
+  getErrorMessage,
+  isNetworkError,
+} from "@/lib/api";
 
 interface UseSimulationOptions {
   autoRefresh?: boolean;
@@ -76,7 +79,7 @@ export function useSimulation(
   // Check API connection
   const checkConnection = useCallback(async () => {
     try {
-      await simulationApi.healthCheck();
+      await simulationApiSimple.healthCheck();
       setIsConnected(true);
       if (error && isNetworkError(error)) {
         setError(null);
@@ -96,7 +99,7 @@ export function useSimulation(
       setError(null);
 
       try {
-        const newSimulation = await simulationApi.createSimulation(
+        const newSimulation = await simulationApiSimple.createSimulation(
           name,
           parameters
         );
@@ -119,7 +122,7 @@ export function useSimulation(
       setError(null);
 
       try {
-        const loadedSimulation = await simulationApi.getSimulation(id);
+        const loadedSimulation = await simulationApiSimple.getSimulation(id);
         setSimulation(loadedSimulation);
         setBacteria(loadedSimulation.currentState.bacteria);
         setIsConnected(true);
@@ -140,7 +143,7 @@ export function useSimulation(
     setError(null);
 
     try {
-      const updatedSimulation = await simulationApi.startSimulation(
+      const updatedSimulation = await simulationApiSimple.startSimulation(
         simulation.id
       );
       setSimulation(updatedSimulation);
@@ -161,7 +164,7 @@ export function useSimulation(
     setError(null);
 
     try {
-      const updatedSimulation = await simulationApi.stopSimulation(
+      const updatedSimulation = await simulationApiSimple.stopSimulation(
         simulation.id
       );
       setSimulation(updatedSimulation);
@@ -182,7 +185,7 @@ export function useSimulation(
     setError(null);
 
     try {
-      const updatedSimulation = await simulationApi.resetSimulation(
+      const updatedSimulation = await simulationApiSimple.resetSimulation(
         simulation.id
       );
       setSimulation(updatedSimulation);
@@ -200,7 +203,7 @@ export function useSimulation(
     if (!simulation) return;
 
     try {
-      const updatedSimulation = await simulationApi.stepSimulation(
+      const updatedSimulation = await simulationApiSimple.stepSimulation(
         simulation.id
       );
       setSimulation(updatedSimulation);
@@ -220,7 +223,7 @@ export function useSimulation(
       setError(null);
 
       try {
-        const updatedSimulation = await simulationApi.updateSimulation(
+        const updatedSimulation = await simulationApiSimple.updateSimulation(
           simulation.id,
           parameters
         );
@@ -241,7 +244,7 @@ export function useSimulation(
     if (autoRefresh && isSimulationRunning && simulation && isConnected) {
       refreshIntervalRef.current = setInterval(async () => {
         try {
-          const updatedSimulation = await simulationApi.getSimulation(
+          const updatedSimulation = await simulationApiSimple.getSimulation(
             simulation.id
           );
           setSimulation(updatedSimulation);

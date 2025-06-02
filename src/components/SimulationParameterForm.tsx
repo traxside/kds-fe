@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,7 +57,7 @@ interface SimulationParameterFormProps {
   disabled?: boolean;
 }
 
-export default function SimulationParameterForm({
+const SimulationParameterForm = memo<SimulationParameterFormProps>(function SimulationParameterForm({
   onSubmit,
   isLoading = false,
   defaultValues,
@@ -76,21 +76,21 @@ export default function SimulationParameterForm({
     },
   });
 
-  const handleSubmit = (data: SimulationParametersInput) => {
+  const handleSubmit = useCallback((data: SimulationParametersInput) => {
     onSubmit(data);
-  };
+  }, [onSubmit]);
 
-  const handlePresetChange = (presetKey: string) => {
+  const handlePresetChange = useCallback((presetKey: string) => {
     if (presetKey in simulationPresets) {
       const preset =
         simulationPresets[presetKey as keyof typeof simulationPresets];
       form.reset(preset);
     }
-  };
+  }, [form]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     form.reset(simulationPresets.default);
-  };
+  }, [form]);
 
   const watchedValues = form.watch();
 
@@ -150,7 +150,7 @@ export default function SimulationParameterForm({
                             Initial Population
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Info className="h-3 w-3 ml-1 text-slate-400" />
+                                <Info className="h-3 w-3 ml-1 mr-2 text-slate-400" />
                               </TooltipTrigger>
                               <TooltipContent className="backdrop-blur-md bg-white/90 dark:bg-slate-900/90">
                                 <p>
@@ -202,7 +202,7 @@ export default function SimulationParameterForm({
                             Growth Rate
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Info className="h-3 w-3 ml-1 text-slate-400" />
+                                <Info className="h-3 w-3 ml-1 mr-2 text-slate-400" />
                               </TooltipTrigger>
                               <TooltipContent className="backdrop-blur-md bg-white/90 dark:bg-slate-900/90">
                                 <p>
@@ -254,7 +254,7 @@ export default function SimulationParameterForm({
                             Antibiotic Concentration
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Info className="h-3 w-3 ml-1 text-slate-400" />
+                                <Info className="h-3 w-3 ml-1 mr-2 text-slate-400" />
                               </TooltipTrigger>
                               <TooltipContent className="backdrop-blur-md bg-white/90 dark:bg-slate-900/90">
                                 <p>
@@ -309,7 +309,7 @@ export default function SimulationParameterForm({
                             Mutation Rate
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Info className="h-3 w-3 ml-1 text-slate-400" />
+                                <Info className="h-3 w-3 ml-1 mr-2 text-slate-400" />
                               </TooltipTrigger>
                               <TooltipContent className="backdrop-blur-md bg-white/90 dark:bg-slate-900/90">
                                 <p>
@@ -361,7 +361,7 @@ export default function SimulationParameterForm({
                             Duration (Generations)
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Info className="h-3 w-3 ml-1 text-slate-400" />
+                                <Info className="h-3 w-3 ml-1 mr-2 text-slate-400" />
                               </TooltipTrigger>
                               <TooltipContent className="backdrop-blur-md bg-white/90 dark:bg-slate-900/90">
                                 <p>
@@ -412,7 +412,7 @@ export default function SimulationParameterForm({
                             Petri Dish Size
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Info className="h-3 w-3 ml-1 text-slate-400" />
+                                <Info className="h-3 w-3 ml-1 mr-2 text-slate-400" />
                               </TooltipTrigger>
                               <TooltipContent className="backdrop-blur-md bg-white/90 dark:bg-slate-900/90">
                                 <p>
@@ -479,4 +479,6 @@ export default function SimulationParameterForm({
       </CardContent>
     </Card>
   );
-}
+});
+
+export default SimulationParameterForm;

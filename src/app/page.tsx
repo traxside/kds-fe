@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,14 +25,15 @@ import {
 import PetriDish from "@/components/PetriDish";
 import SimulationParameterForm from "@/components/SimulationParameterForm";
 import StatisticsPanel from "@/components/StatisticsPanel";
+import SimulationControls from "@/components/SimulationControls";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ConnectionStatus, {
   ConnectionStatusCompact,
 } from "@/components/ConnectionStatus";
-import { useSimulation } from "@/hooks/useSimulation";
+import { useSimulationContext } from "@/context/SimulationContext";
 import { Bacterium, SimulationParametersInput } from "@/types/simulation";
 
-// Custom colors
+// Move colors outside component to prevent recreation on every render
 const colors = {
   surface: {
     a0: "#121212",
@@ -61,8 +62,42 @@ const colors = {
   light: "#ffffff",
 };
 
+// Generate sample bacteria function moved outside to prevent recreation
+const generateSampleBacteria = (): Bacterium[] => {
+  const sampleBacteria: Bacterium[] = [];
+  const centerX = 300;
+  const centerY = 300;
+  const maxRadius = 250;
+
+  for (let i = 0; i < 50; i++) {
+    const angle = Math.random() * 2 * Math.PI;
+    const radius = Math.random() * maxRadius;
+    const x = centerX + radius * Math.cos(angle);
+    const y = centerY + radius * Math.sin(angle);
+    const isResistant = Math.random() < 0.2;
+
+    const bacterium: Bacterium = {
+      id: `bacteria-${i}`,
+      x,
+      y,
+      isResistant,
+      fitness: 0.5 + Math.random() * 0.5,
+      age: Math.floor(Math.random() * 10),
+      generation: Math.floor(Math.random() * 5),
+      parentId:
+        i > 10 ? `bacteria-${Math.floor(Math.random() * 10)}` : undefined,
+      color: isResistant ? "#ef4444" : "#22c55e",
+      size: 3 + Math.random() * 3,
+    };
+
+    sampleBacteria.push(bacterium);
+  }
+
+  return sampleBacteria;
+};
+
 export default function Dashboard() {
-  // Use the new simulation hook with auto-refresh enabled
+  // Use the simulation context instead of the direct hook
   const {
     simulation,
     bacteria,
@@ -76,60 +111,21 @@ export default function Dashboard() {
     resetSimulation,
     clearError,
     checkConnection,
-  } = useSimulation({
-    autoRefresh: true,
-    refreshInterval: 1000,
-  });
+  } = useSimulationContext();
 
   // Local state for UI
   const [simulationName, setSimulationName] = useState(
     "Bacteria Evolution Simulation"
   );
   const [showConnectionDetails, setShowConnectionDetails] = useState(false);
-
-  // Generate sample bacteria for when no simulation exists (fallback)
-  const generateSampleBacteria = useCallback(() => {
-    const sampleBacteria: Bacterium[] = [];
-    const centerX = 300;
-    const centerY = 300;
-    const maxRadius = 250;
-
-    for (let i = 0; i < 50; i++) {
-      const angle = Math.random() * 2 * Math.PI;
-      const radius = Math.random() * maxRadius;
-      const x = centerX + radius * Math.cos(angle);
-      const y = centerY + radius * Math.sin(angle);
-      const isResistant = Math.random() < 0.2;
-
-      const bacterium: Bacterium = {
-        id: `bacteria-${i}`,
-        x,
-        y,
-        isResistant,
-        fitness: 0.5 + Math.random() * 0.5,
-        age: Math.floor(Math.random() * 10),
-        generation: Math.floor(Math.random() * 5),
-        parentId:
-          i > 10 ? `bacteria-${Math.floor(Math.random() * 10)}` : undefined,
-        color: isResistant ? "#ef4444" : "#22c55e",
-        size: 3 + Math.random() * 3,
-      };
-
-      sampleBacteria.push(bacterium);
-    }
-
-    return sampleBacteria;
-  }, []);
-
-  // Sample bacteria for display when no simulation exists
   const [sampleBacteria, setSampleBacteria] = useState<Bacterium[]>([]);
 
   // Initialize sample data on mount
   useEffect(() => {
     setSampleBacteria(generateSampleBacteria());
-  }, [generateSampleBacteria]);
+  }, []);
 
-  // Handle form submission - create new simulation
+  // Memoized event handlers
   const handleSimulationSubmit = useCallback(
     async (parameters: SimulationParametersInput) => {
       try {
@@ -141,7 +137,6 @@ export default function Dashboard() {
     [createSimulation, simulationName]
   );
 
-  // Handle play/pause
   const handlePlayPause = useCallback(async () => {
     try {
       if (isSimulationRunning) {
@@ -156,7 +151,6 @@ export default function Dashboard() {
     }
   }, [isSimulationRunning, simulation, startSimulation, stopSimulation]);
 
-  // Handle reset
   const handleReset = useCallback(async () => {
     try {
       if (simulation) {
@@ -168,16 +162,28 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Failed to reset simulation:", err);
     }
-  }, [simulation, resetSimulation, generateSampleBacteria]);
+  }, [simulation, resetSimulation]);
 
-  // Use real bacteria data if available, otherwise fallback to sample data
-  const displayBacteria = bacteria.length > 0 ? bacteria : sampleBacteria;
-  const resistancePercentage =
-    displayBacteria.length > 0
+  const handleSimulationNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSimulationName(e.target.value);
+  }, []);
+
+  const handleToggleConnectionDetails = useCallback(() => {
+    setShowConnectionDetails(prev => !prev);
+  }, []);
+
+  // Memoized computed values
+  const displayBacteria = useMemo(() => {
+    return bacteria.length > 0 ? bacteria : sampleBacteria;
+  }, [bacteria, sampleBacteria]);
+
+  const resistancePercentage = useMemo(() => {
+    return displayBacteria.length > 0
       ? (displayBacteria.filter((b) => b.isResistant).length /
           displayBacteria.length) *
         100
       : 0;
+  }, [displayBacteria]);
 
   return (
     <ErrorBoundary>
@@ -450,6 +456,8 @@ export default function Dashboard() {
                       width={600}
                       height={600}
                       isSimulationRunning={isSimulationRunning}
+                      maxDisplayNodes={1000}
+                      enableSpatialSampling={true}
                       onBacteriumClick={(bacterium) => {
                         console.log("Clicked bacterium:", bacterium);
                       }}
@@ -585,6 +593,12 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
+                {/* Simulation Controls */}
+                <SimulationControls
+                  showKeyboardShortcuts={true}
+                  showAdvancedControls={true}
+                />
+
                 {/* Controls */}
                 <Card
                   className="flex-1 border"
@@ -656,7 +670,7 @@ export default function Dashboard() {
                           <Input
                             id="simulation-name"
                             value={simulationName}
-                            onChange={(e) => setSimulationName(e.target.value)}
+                            onChange={handleSimulationNameChange}
                             placeholder="Enter simulation name"
                             disabled={isLoading || !!simulation}
                             style={{

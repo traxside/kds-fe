@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, memo, useCallback } from "react";
 import {
   LineChart,
   Line,
@@ -33,7 +33,7 @@ interface StatisticsPanelProps {
   isLoading?: boolean;
 }
 
-// Mock data generator for testing
+// Mock data generator for testing - moved outside component to prevent recreation
 const generateMockStatistics = (): SimulationStatistics => {
   const generations = Array.from({ length: 50 }, (_, i) => i + 1);
 
@@ -59,11 +59,33 @@ const generateMockStatistics = (): SimulationStatistics => {
   };
 };
 
-export default function StatisticsPanel({
+// Memoized CustomTooltip component
+const CustomTooltip = memo(function CustomTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg">
+        <p className="font-medium">{`Generation ${label}`}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} style={{ color: entry.color }} className="text-sm">
+            {`${entry.name}: ${
+              typeof entry.value === "number"
+                ? entry.value.toFixed(entry.dataKey === "fitness" ? 2 : 0)
+                : entry.value
+            }`}
+            {entry.dataKey === "resistanceRatio" && "%"}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+});
+
+const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
   statistics,
   isLoading = false,
-}: StatisticsPanelProps) {
-  // Use mock data if no statistics provided
+}) {
+  // Use mock data if no statistics provided - memoized to prevent recreation
   const mockStats = useMemo(() => generateMockStatistics(), []);
   const currentStats = statistics || mockStats;
 
@@ -117,34 +139,16 @@ export default function StatisticsPanel({
     };
   }, [currentStats]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg">
-          <p className="font-medium">{`Generation ${label}`}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }} className="text-sm">
-              {`${entry.name}: ${
-                typeof entry.value === "number"
-                  ? entry.value.toFixed(entry.dataKey === "fitness" ? 2 : 0)
-                  : entry.value
-              }`}
-              {entry.dataKey === "resistanceRatio" && "%"}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
+  // Memoized loading component
+  const loadingComponent = useMemo(() => (
+    <div className="space-y-4">
+      <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>
+      <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-32 rounded-lg"></div>
+    </div>
+  ), []);
 
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>
-        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-32 rounded-lg"></div>
-      </div>
-    );
+    return loadingComponent;
   }
 
   return (
@@ -401,4 +405,6 @@ export default function StatisticsPanel({
       </Tabs>
     </div>
   );
-}
+});
+
+export default StatisticsPanel;
