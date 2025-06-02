@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,20 +10,18 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Play,
-  Pause,
-  RotateCcw,
-  Settings,
-  Activity,
-  BarChart3,
-  Beaker,
-  Zap,
-  Dna,
-  Loader2,
-  Info,
-  AlertTriangle,
-  X,
-} from "lucide-react";
+  LuPlay,
+  LuPause,
+  LuRefreshCw,
+  LuSettings,
+  LuActivity,
+  LuChartBar,
+  LuZap,
+  LuInfo,
+  LuTriangleAlert,
+  LuX,
+  LuFlaskConical,
+} from "react-icons/lu";
 import PetriDish from "@/components/PetriDish";
 import SimulationParameterForm from "@/components/SimulationParameterForm";
 import StatisticsPanel from "@/components/StatisticsPanel";
@@ -33,6 +31,35 @@ import ConnectionStatus, {
 } from "@/components/ConnectionStatus";
 import { useSimulation } from "@/hooks/useSimulation";
 import { Bacterium, SimulationParametersInput } from "@/types/simulation";
+
+// Custom colors
+const colors = {
+  surface: {
+    a0: "#121212",
+    a10: "#282828",
+    a20: "#3f3f3f",
+    a30: "#575757",
+    a40: "#717171",
+    a50: "#8b8b8b",
+  },
+  surfaceTonal: {
+    a0: "#1a2623",
+    a10: "#2f3a38",
+    a20: "#46504d",
+    a30: "#5e6764",
+    a40: "#767e7c",
+    a50: "#909795",
+  },
+  primary: {
+    a0: "#01fbd9",
+    a10: "#51fcdd",
+    a20: "#73fde1",
+    a30: "#8dfee5",
+    a40: "#a4feea",
+    a50: "#b8ffee",
+  },
+  light: "#ffffff",
+};
 
 export default function Dashboard() {
   // Use the new simulation hook with auto-refresh enabled
@@ -154,37 +181,84 @@ export default function Dashboard() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div
+        className="min-h-screen"
+        style={{
+          backgroundColor: colors.surface.a0,
+          color: colors.light,
+        }}
+      >
         {/* Header */}
-        <header className="border-b bg-white/80 backdrop-blur-sm dark:bg-gray-900/80 sticky top-0 z-10">
-          <div className="container mx-auto px-4 py-4">
+        <header
+          className="sticky top-0 z-10 border-b"
+          style={{
+            backgroundColor: `${colors.surface.a10}cc`,
+            backdropFilter: "blur(12px)",
+            borderColor: colors.surface.a20,
+          }}
+        >
+          <div className="container mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="relative">
-                  <Activity className="h-8 w-8 text-blue-600 animate-pulse" />
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
+                  <img
+                    src="/icon1.png"
+                    alt="Bacteria Simulation"
+                    className="h-7 w-7"
+                  />
+                  <div
+                    className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full animate-pulse ${
+                      isSimulationRunning ? "animate-pulse" : ""
+                    }`}
+                    style={{
+                      backgroundColor: colors.primary.a0,
+                      boxShadow: `0 0 10px ${colors.primary.a0}50`,
+                    }}
+                  ></div>
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Bacteria Simulation
+                  <h1
+                    className="text-xl font-medium flex items-center space-x-2"
+                    style={{ color: colors.light }}
+                  >
+                    <span>Bacteria Simulation</span>
                   </h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Interactive bacterial evolution simulator
+                  <p className="text-sm" style={{ color: colors.surface.a50 }}>
+                    Interactive evolution simulator
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <Badge variant="outline" className="text-sm font-mono">
-                  <Dna className="h-3 w-3 mr-1" />
+              <div className="flex items-center space-x-3">
+                <Badge
+                  variant="outline"
+                  className="text-xs"
+                  style={{
+                    backgroundColor: `${colors.surface.a20}80`,
+                    borderColor: colors.surface.a20,
+                    color: colors.primary.a20,
+                  }}
+                >
+                  <LuActivity className="h-3 w-3 mr-1" />
                   Gen: {simulation?.currentState?.generation || 0}
                 </Badge>
                 <Badge
                   variant={isSimulationRunning ? "default" : "secondary"}
-                  className="animate-pulse"
+                  style={{
+                    backgroundColor: isSimulationRunning
+                      ? colors.primary.a0
+                      : colors.surface.a20,
+                    color: isSimulationRunning
+                      ? colors.surface.a0
+                      : colors.surface.a50,
+                    borderColor: colors.surface.a20,
+                    boxShadow: isSimulationRunning
+                      ? `0 0 10px ${colors.primary.a0}30`
+                      : "none",
+                  }}
                 >
                   {isSimulationRunning ? (
                     <>
-                      <Zap className="h-3 w-3 mr-1" />
+                      <LuZap className="h-3 w-3 mr-1" />
                       Running
                     </>
                   ) : (
@@ -204,37 +278,72 @@ export default function Dashboard() {
 
         {/* Error Alert */}
         {error && (
-          <div className="container mx-auto px-4 pt-4">
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
+          <div className="container mx-auto px-6 pt-4">
+            <Alert
+              variant="destructive"
+              style={{
+                backgroundColor: "#7f1d1d80",
+                borderColor: "#dc262680",
+                backdropFilter: "blur(12px)",
+              }}
+            >
+              <LuTriangleAlert className="h-4 w-4" />
               <AlertDescription className="flex items-center justify-between">
-                <span>{error}</span>
+                <span style={{ color: "#fca5a5" }}>{error}</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={clearError}
                   className="h-6 w-6 p-0"
+                  style={{
+                    backgroundColor: "transparent",
+                    color: "#fca5a5",
+                  }}
                 >
-                  <X className="h-4 w-4" />
+                  <LuX className="h-4 w-4" />
                 </Button>
               </AlertDescription>
             </Alert>
           </div>
         )}
 
-        {/* Main Content - Split Screen Layout */}
-        <div className="container mx-auto px-4 py-6">
+        {/* Main Content */}
+        <div className="container mx-auto px-6 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
-            {/* Left Side - Petri Dish Visualization (2/3 width on large screens) */}
+            {/* Petri Dish Visualization */}
             <div className="lg:col-span-2">
-              <Card className="h-full border-2 border-blue-200/50 dark:border-blue-800/50 shadow-xl">
+              <Card
+                className="h-full border"
+                style={{
+                  backgroundColor: `${colors.surface.a10}cc`,
+                  backdropFilter: "blur(12px)",
+                  borderColor: colors.surface.a20,
+                  boxShadow: `0 0 20px ${colors.primary.a0}20`,
+                }}
+              >
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Beaker className="h-5 w-5 text-blue-600" />
-                      <span>Petri Dish Visualization</span>
+                    <div className="flex items-center space-x-3">
+                      <LuFlaskConical
+                        className="h-5 w-5"
+                        style={{ color: colors.primary.a0 }}
+                      />
+                      <span
+                        className="text-lg font-medium"
+                        style={{ color: colors.light }}
+                      >
+                        Petri Dish
+                      </span>
                       {simulation && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge
+                          variant="outline"
+                          className="text-xs"
+                          style={{
+                            backgroundColor: `${colors.primary.a0}10`,
+                            borderColor: `${colors.primary.a0}50`,
+                            color: colors.primary.a20,
+                          }}
+                        >
                           {simulation.name}
                         </Badge>
                       )}
@@ -247,28 +356,31 @@ export default function Dashboard() {
                         size="sm"
                         onClick={handlePlayPause}
                         disabled={isLoading || (!simulation && !isConnected)}
-                        className="transition-all duration-200"
-                        aria-label={
-                          isSimulationRunning
-                            ? "Pause simulation"
-                            : "Start simulation"
-                        }
+                        style={{
+                          backgroundColor: isSimulationRunning
+                            ? "#dc2626"
+                            : colors.primary.a0,
+                          color: isSimulationRunning
+                            ? colors.light
+                            : colors.surface.a0,
+                          borderColor: colors.surface.a20,
+                        }}
                       >
                         {isLoading ? (
                           <>
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            <LuRefreshCw className="h-4 w-4 mr-1 animate-spin" />
                             {isSimulationRunning
                               ? "Stopping..."
                               : "Starting..."}
                           </>
                         ) : isSimulationRunning ? (
                           <>
-                            <Pause className="h-4 w-4 mr-1" />
+                            <LuPause className="h-4 w-4 mr-1" />
                             Pause
                           </>
                         ) : (
                           <>
-                            <Play className="h-4 w-4 mr-1" />
+                            <LuPlay className="h-4 w-4 mr-1" />
                             {simulation ? "Resume" : "Start"}
                           </>
                         )}
@@ -278,12 +390,25 @@ export default function Dashboard() {
                         size="sm"
                         onClick={handleReset}
                         disabled={isLoading}
-                        aria-label="Reset simulation"
+                        style={{
+                          backgroundColor: `${colors.surface.a20}80`,
+                          borderColor: colors.surface.a20,
+                          color: colors.surface.a50,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            colors.surface.a20;
+                          e.currentTarget.style.color = colors.light;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = `${colors.surface.a20}80`;
+                          e.currentTarget.style.color = colors.surface.a50;
+                        }}
                       >
                         {isLoading ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          <LuRefreshCw className="h-4 w-4 mr-1 animate-spin" />
                         ) : (
-                          <RotateCcw className="h-4 w-4 mr-1" />
+                          <LuRefreshCw className="h-4 w-4 mr-1" />
                         )}
                         Reset
                       </Button>
@@ -291,18 +416,35 @@ export default function Dashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="h-[calc(100%-5rem)]">
-                  <div className="relative w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center shadow-inner">
+                  <div
+                    className="relative w-full h-full rounded-xl border flex items-center justify-center"
+                    style={{
+                      backgroundColor: colors.surfaceTonal.a0,
+                      borderColor: colors.surfaceTonal.a20,
+                    }}
+                  >
                     {isLoading && (
-                      <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 rounded-xl flex items-center justify-center z-10">
+                      <div
+                        className="absolute inset-0 rounded-xl flex items-center justify-center z-10"
+                        style={{
+                          backgroundColor: `${colors.surface.a10}cc`,
+                          backdropFilter: "blur(12px)",
+                        }}
+                      >
                         <div className="flex items-center space-x-2">
-                          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                          <span className="text-blue-600 font-medium">
+                          <LuRefreshCw
+                            className="h-6 w-6 animate-spin"
+                            style={{ color: colors.primary.a0 }}
+                          />
+                          <span
+                            className="font-medium"
+                            style={{ color: colors.primary.a0 }}
+                          >
                             Processing...
                           </span>
                         </div>
                       </div>
                     )}
-                    {/* PetriDish Component */}
                     <PetriDish
                       bacteria={displayBacteria}
                       width={600}
@@ -310,13 +452,20 @@ export default function Dashboard() {
                       isSimulationRunning={isSimulationRunning}
                       onBacteriumClick={(bacterium) => {
                         console.log("Clicked bacterium:", bacterium);
-                        // TODO: Show bacterium details in a modal or sidebar
                       }}
                     />
                     {!isConnected && displayBacteria === sampleBacteria && (
-                      <div className="absolute bottom-4 left-4 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-3 py-2 rounded-lg text-sm">
-                        <Info className="h-4 w-4 inline mr-1" />
-                        Showing sample data (API disconnected)
+                      <div
+                        className="absolute bottom-4 left-4 px-3 py-2 rounded-lg text-sm border"
+                        style={{
+                          backgroundColor: "#78716c80",
+                          color: "#fde047",
+                          borderColor: "#ca8a0480",
+                          backdropFilter: "blur(12px)",
+                        }}
+                      >
+                        <LuInfo className="h-4 w-4 inline mr-1" />
+                        Sample data (API disconnected)
                       </div>
                     )}
                   </div>
@@ -324,60 +473,111 @@ export default function Dashboard() {
               </Card>
             </div>
 
-            {/* Right Side - Controls and Charts (1/3 width on large screens) */}
+            {/* Right Side Panel */}
             <div className="lg:col-span-1">
-              <div className="space-y-6 h-full">
-                {/* Quick Stats */}
-                <Card className="border-l-4 border-l-blue-500">
+              <div className="space-y-4 h-full">
+                {/* Population Stats */}
+                <Card
+                  className="border"
+                  style={{
+                    backgroundColor: `${colors.surface.a10}cc`,
+                    backdropFilter: "blur(12px)",
+                    borderColor: colors.surface.a20,
+                  }}
+                >
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center">
-                      <BarChart3 className="h-5 w-5 mr-2 text-blue-600" />
-                      Population Overview
+                      <LuChartBar
+                        className="h-5 w-5 mr-2"
+                        style={{ color: colors.primary.a0 }}
+                      />
+                      <span style={{ color: colors.light }}>Population</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div
+                        className="text-center p-3 rounded-lg border"
+                        style={{
+                          backgroundColor: colors.surfaceTonal.a10,
+                          borderColor: colors.surfaceTonal.a20,
+                        }}
+                      >
+                        <div
+                          className="text-2xl font-semibold"
+                          style={{ color: colors.primary.a0 }}
+                        >
                           {displayBacteria.length}
                         </div>
-                        <div className="text-xs text-blue-600/70">Total</div>
+                        <div
+                          className="text-xs"
+                          style={{ color: colors.primary.a20 }}
+                        >
+                          Total
+                        </div>
                       </div>
-                      <div className="text-center p-3 bg-red-50 dark:bg-red-950 rounded-lg">
-                        <div className="text-2xl font-bold text-red-600">
+                      <div
+                        className="text-center p-3 rounded-lg border"
+                        style={{
+                          backgroundColor: "#7f1d1d50",
+                          borderColor: "#7f1d1d80",
+                        }}
+                      >
+                        <div
+                          className="text-2xl font-semibold"
+                          style={{ color: "#f87171" }}
+                        >
                           {displayBacteria.filter((b) => b.isResistant).length}
                         </div>
-                        <div className="text-xs text-red-600/70">Resistant</div>
+                        <div className="text-xs" style={{ color: "#fca5a5" }}>
+                          Resistant
+                        </div>
                       </div>
                     </div>
 
-                    <Separator />
+                    <Separator
+                      style={{ backgroundColor: colors.surface.a20 }}
+                    />
 
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                        <span
+                          className="text-sm"
+                          style={{ color: colors.surface.a50 }}
+                        >
                           Sensitive
                         </span>
-                        <Badge variant="outline" className="font-mono">
+                        <Badge
+                          variant="outline"
+                          style={{
+                            backgroundColor: `${colors.surface.a20}80`,
+                            borderColor: colors.surface.a20,
+                            color: colors.primary.a20,
+                          }}
+                        >
                           {displayBacteria.filter((b) => !b.isResistant).length}
                         </Badge>
                       </div>
 
                       <div className="space-y-2">
-                        <div className="flex justify-between text-xs text-gray-500">
+                        <div
+                          className="flex justify-between text-xs"
+                          style={{ color: colors.surface.a40 }}
+                        >
                           <span>Resistance Rate</span>
                           <span>{resistancePercentage.toFixed(1)}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                        <div
+                          className="w-full rounded-full h-2 overflow-hidden"
+                          style={{ backgroundColor: colors.surface.a20 }}
+                        >
                           <div
-                            className="bg-gradient-to-r from-red-500 to-red-600 h-3 rounded-full transition-all duration-500 ease-out"
+                            className="h-2 rounded-full transition-all duration-500 ease-out"
                             style={{
                               width: `${resistancePercentage}%`,
+                              background: `linear-gradient(135deg, ${colors.primary.a0}, ${colors.primary.a20})`,
+                              boxShadow: `0 0 10px ${colors.primary.a0}30`,
                             }}
-                            role="progressbar"
-                            aria-label={`Resistance rate: ${resistancePercentage.toFixed(
-                              1
-                            )}%`}
                           ></div>
                         </div>
                       </div>
@@ -385,13 +585,23 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Controls and Parameters */}
-                <Card className="flex-1 border-l-4 border-l-green-500">
+                {/* Controls */}
+                <Card
+                  className="flex-1 border"
+                  style={{
+                    backgroundColor: `${colors.surface.a10}cc`,
+                    backdropFilter: "blur(12px)",
+                    borderColor: colors.surface.a20,
+                  }}
+                >
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center justify-between">
                       <div className="flex items-center">
-                        <Settings className="h-5 w-5 mr-2 text-green-600" />
-                        Controls & Parameters
+                        <LuSettings
+                          className="h-5 w-5 mr-2"
+                          style={{ color: colors.primary.a0 }}
+                        />
+                        <span style={{ color: colors.light }}>Controls</span>
                       </div>
                       <ConnectionStatusCompact
                         isConnected={isConnected}
@@ -403,25 +613,43 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent className="h-[calc(100%-5rem)]">
                     <Tabs defaultValue="parameters" className="h-full">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="parameters" className="text-sm">
+                      <TabsList
+                        className="grid w-full grid-cols-2 border"
+                        style={{
+                          backgroundColor: colors.surface.a10,
+                          borderColor: colors.surface.a20,
+                        }}
+                      >
+                        <TabsTrigger
+                          value="parameters"
+                          className="text-sm data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=inactive]:text-gray-400 hover:text-white/80 transition-colors"
+                          style={{
+                            color: colors.surface.a50,
+                          }}
+                        >
                           Parameters
                         </TabsTrigger>
-                        <TabsTrigger value="charts" className="text-sm">
-                          <BarChart3 className="h-4 w-4 mr-1" />
+                        <TabsTrigger
+                          value="charts"
+                          className="text-sm data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=inactive]:text-gray-400 hover:text-white/80 transition-colors"
+                          style={{
+                            color: colors.surface.a50,
+                          }}
+                        >
+                          <LuChartBar className="h-4 w-4 mr-1" />
                           Charts
                         </TabsTrigger>
                       </TabsList>
 
                       <TabsContent
                         value="parameters"
-                        className="mt-4 space-y-6"
+                        className="mt-4 space-y-4"
                       >
-                        {/* Simulation Name Input */}
                         <div className="space-y-2">
                           <Label
                             htmlFor="simulation-name"
                             className="text-sm font-medium"
+                            style={{ color: colors.surface.a50 }}
                           >
                             Simulation Name
                           </Label>
@@ -431,11 +659,17 @@ export default function Dashboard() {
                             onChange={(e) => setSimulationName(e.target.value)}
                             placeholder="Enter simulation name"
                             disabled={isLoading || !!simulation}
-                            className="text-sm"
+                            style={{
+                              backgroundColor: colors.surface.a10,
+                              borderColor: colors.surface.a20,
+                              color: colors.light,
+                            }}
                           />
                         </div>
 
-                        <Separator />
+                        <Separator
+                          style={{ backgroundColor: colors.surface.a20 }}
+                        />
 
                         <SimulationParameterForm
                           onSubmit={handleSimulationSubmit}

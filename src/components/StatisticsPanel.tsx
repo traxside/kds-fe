@@ -148,7 +148,7 @@ export default function StatisticsPanel({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 statistics-panel">
       {/* Summary Statistics */}
       {latestData && (
         <div className="grid grid-cols-2 gap-3">
@@ -181,14 +181,66 @@ export default function StatisticsPanel({
 
       {/* Charts Tabs */}
       <Tabs defaultValue="population" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="population" className="text-xs">
+        <TabsList
+          className="grid w-full grid-cols-3 p-1 rounded-lg border"
+          style={{
+            backgroundColor: "#282828",
+            borderColor: "#3f3f3f",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+          }}
+        >
+          <TabsTrigger
+            value="population"
+            className="text-xs transition-all duration-200 data-[state=active]:shadow-md"
+            style={{
+              color: "#8b8b8b",
+              backgroundColor: "transparent",
+              border: "1px solid transparent",
+              borderRadius: "6px",
+            }}
+            data-active-style={{
+              backgroundColor: "#01fbd9",
+              color: "#121212",
+              borderColor: "#73fde1",
+              boxShadow: "0 0 15px rgba(1, 251, 217, 0.4)",
+            }}
+          >
             Population
           </TabsTrigger>
-          <TabsTrigger value="resistance" className="text-xs">
+          <TabsTrigger
+            value="resistance"
+            className="text-xs transition-all duration-200 data-[state=active]:shadow-md"
+            style={{
+              color: "#8b8b8b",
+              backgroundColor: "transparent",
+              border: "1px solid transparent",
+              borderRadius: "6px",
+            }}
+            data-active-style={{
+              backgroundColor: "#01fbd9",
+              color: "#121212",
+              borderColor: "#73fde1",
+              boxShadow: "0 0 15px rgba(1, 251, 217, 0.4)",
+            }}
+          >
             Resistance
           </TabsTrigger>
-          <TabsTrigger value="fitness" className="text-xs">
+          <TabsTrigger
+            value="fitness"
+            className="text-xs transition-all duration-200 data-[state=active]:shadow-md"
+            style={{
+              color: "#8b8b8b",
+              backgroundColor: "transparent",
+              border: "1px solid transparent",
+              borderRadius: "6px",
+            }}
+            data-active-style={{
+              backgroundColor: "#01fbd9",
+              color: "#121212",
+              borderColor: "#73fde1",
+              boxShadow: "0 0 15px rgba(1, 251, 217, 0.4)",
+            }}
+          >
             Fitness
           </TabsTrigger>
         </TabsList>

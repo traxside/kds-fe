@@ -2,12 +2,12 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Wifi,
-  WifiOff,
-  AlertTriangle,
-  RefreshCw,
-  CheckCircle,
-} from "lucide-react";
+  LuWifi,
+  LuWifiOff,
+  LuTriangleAlert,
+  LuRefreshCw,
+  LuCircleCheck,
+} from "react-icons/lu";
 import { cn } from "@/lib/utils";
 
 interface ConnectionStatusProps {
@@ -41,14 +41,14 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
         <div className="flex items-center space-x-2">
           {isConnected ? (
             <>
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <LuCircleCheck className="h-5 w-5 text-green-500" />
               <span className="text-green-700 dark:text-green-400 font-medium">
                 Connected
               </span>
             </>
           ) : (
             <>
-              <WifiOff className="h-5 w-5 text-red-500" />
+              <LuWifiOff className="h-5 w-5 text-red-500" />
               <span className="text-red-700 dark:text-red-400 font-medium">
                 Disconnected
               </span>
@@ -66,7 +66,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
 
       {error && (
         <div className="flex items-start space-x-2 p-2 bg-red-50 dark:bg-red-950 rounded border-l-4 border-red-500">
-          <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+          <LuTriangleAlert className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
           <span className="text-sm text-red-700 dark:text-red-300">
             {error}
           </span>
@@ -83,12 +83,12 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
         >
           {isRetrying ? (
             <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              <LuRefreshCw className="h-4 w-4 mr-2 animate-spin" />
               Retrying...
             </>
           ) : (
             <>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <LuRefreshCw className="h-4 w-4 mr-2" />
               Retry Connection
             </>
           )}
@@ -108,7 +108,7 @@ export const ConnectionStatusCompact: React.FC<
           variant="outline"
           className="text-xs flex items-center space-x-1"
         >
-          <Wifi className="h-3 w-3" />
+          <LuWifi className="h-3 w-3" />
           <span>Online</span>
         </Badge>
       ) : (
@@ -117,7 +117,7 @@ export const ConnectionStatusCompact: React.FC<
             variant="destructive"
             className="text-xs flex items-center space-x-1"
           >
-            <WifiOff className="h-3 w-3" />
+            <LuWifiOff className="h-3 w-3" />
             <span>Offline</span>
           </Badge>
 
@@ -130,9 +130,9 @@ export const ConnectionStatusCompact: React.FC<
             title={error || "Retry connection"}
           >
             {isRetrying ? (
-              <RefreshCw className="h-3 w-3 animate-spin" />
+              <LuRefreshCw className="h-3 w-3 animate-spin" />
             ) : (
-              <RefreshCw className="h-3 w-3" />
+              <LuRefreshCw className="h-3 w-3" />
             )}
           </Button>
         </div>

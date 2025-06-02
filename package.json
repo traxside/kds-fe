@@ -29,6 +29,7 @@
     "react-force-graph": "^1.47.6",
     "react-force-graph-2d": "^1.27.1",
     "react-hook-form": "^7.57.0",
+    "react-icons": "^5.5.0",
     "recharts": "^2.15.3",
     "tailwind-merge": "^3.3.0",
     "zod": "^3.25.47"

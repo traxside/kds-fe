@@ -219,24 +219,26 @@ export default function PetriDish({
         }}
       />
 
-      {/* Force Graph */}
-      <ForceGraph2D
-        ref={graphRef}
-        graphData={graphData}
-        width={width}
-        height={height}
-        nodeLabel={nodeLabel}
-        nodeCanvasObject={nodeCanvasObject}
-        onNodeHover={handleNodeHover}
-        onNodeClick={handleNodeClick}
-        enableZoomInteraction={true}
-        enablePanInteraction={true}
-        enableNodeDrag={false}
-        cooldownTicks={isSimulationRunning ? 0 : 100}
-        cooldownTime={isSimulationRunning ? 0 : 2000}
-        d3AlphaDecay={0.02}
-        d3VelocityDecay={0.3}
-      />
+      {/* Force Graph Container - Centered */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <ForceGraph2D
+          ref={graphRef}
+          graphData={graphData}
+          width={width}
+          height={height}
+          nodeLabel={nodeLabel}
+          nodeCanvasObject={nodeCanvasObject}
+          onNodeHover={handleNodeHover}
+          onNodeClick={handleNodeClick}
+          enableZoomInteraction={true}
+          enablePanInteraction={true}
+          enableNodeDrag={false}
+          cooldownTicks={isSimulationRunning ? 0 : 100}
+          cooldownTime={isSimulationRunning ? 0 : 2000}
+          d3AlphaDecay={0.02}
+          d3VelocityDecay={0.3}
+        />
+      </div>
 
       {/* Legend */}
       <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-3 text-xs">

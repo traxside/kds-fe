@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Component, ReactNode } from "react";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { LuTriangleAlert, LuRefreshCw, LuHouse } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -50,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-4">
-                <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+                <LuTriangleAlert className="w-8 h-8 text-red-600 dark:text-red-400" />
               </div>
               <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">
                 Something went wrong
@@ -81,7 +81,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
               <div className="flex flex-col space-y-2">
                 <Button onClick={this.handleRetry} className="w-full">
-                  <RefreshCw className="w-4 h-4 mr-2" />
+                  <LuRefreshCw className="w-4 h-4 mr-2" />
                   Try Again
                 </Button>
                 <Button
@@ -89,7 +89,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   onClick={this.handleGoHome}
                   className="w-full"
                 >
-                  <Home className="w-4 h-4 mr-2" />
+                  <LuHouse className="w-4 h-4 mr-2" />
                   Go to Homepage
                 </Button>
               </div>
@@ -122,7 +122,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-4">
-            <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+            <LuTriangleAlert className="w-8 h-8 text-red-600 dark:text-red-400" />
           </div>
           <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">
             Something went wrong
@@ -145,7 +145,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           )}
 
           <Button onClick={resetError} className="w-full">
-            <RefreshCw className="w-4 h-4 mr-2" />
+            <LuRefreshCw className="w-4 h-4 mr-2" />
             Try Again
           </Button>
         </CardContent>
