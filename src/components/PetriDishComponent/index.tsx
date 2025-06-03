@@ -1,5 +1,5 @@
 "use client";
-
+// TODO fix
 import React, { useEffect, useRef, useState, useCallback, memo } from "react";
 // import dynamic from "next/dynamic"; // Keep dynamic for Graph component
 import { Bacterium } from "@/types/simulation";
@@ -46,7 +46,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   // const lastErrorTimeRef = useRef<number>(0); // Error handling might change
   // const errorCountRef = useRef<number>(0);
   // const isRecoveringRef = useRef<boolean>(false);
-  
+
   const [mounted, setMounted] = useState(false);
   // const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null); // Adapt hover logic
   const [containerSize, setContainerSize] = useState({ width, height });
@@ -135,14 +135,14 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
     // 'title' for tooltips. 'color', 'shape', 'size' for appearance.
     const nodes = displayBacteria.map(b => ({
       id: b.id,
-      label: b.isResistant ? `R-${b.id.substring(0,3)}` : `S-${b.id.substring(0,3)}`, 
+      label: b.isResistant ? `R-${b.id.substring(0,3)}` : `S-${b.id.substring(0,3)}`,
       title: `ID: ${b.id}<br>Age: ${b.age}<br>Resistant: ${b.isResistant}<br>Fitness: ${b.fitness?.toFixed(2)}`,
       color: b.color,
       value: b.size, // For size scaling by value
       // x: b.x, // Can be used for initial positions if physics allows
       // y: b.y,
       shape: b.isResistant ? 'star' : 'dot',
-      originalData: b, 
+      originalData: b,
     }));
 
     // Adapt createValidatedLinks for react-graph-vis
@@ -152,7 +152,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
     for (const bacterium of displayBacteria) {
       if (bacterium.parentId && displayedNodeIds.has(bacterium.parentId)) {
         // Ensure both source (parent) and target (child) are in the current node set
-        if (displayedNodeIds.has(bacterium.id)) { 
+        if (displayedNodeIds.has(bacterium.id)) {
           edges.push({
             from: bacterium.parentId,
             to: bacterium.id,
@@ -161,7 +161,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
         }
       }
     }
-    
+
     // The validateLinks function might still be useful, but its signature needs to match vis-network edges.
     // For now, direct creation.
 
@@ -262,7 +262,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
     //   // Handle zoom for performance metrics if needed
     // }
   };
-  
+
   // The useForceConfiguration hook is no longer needed with react-graph-vis
   // const forceConfigHook = useForceConfiguration(
   //    forceGraphRef,
@@ -284,8 +284,8 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   }
 
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       style={{
         width: '100%', // Fill entire parent container
         height: '100%', // Fill entire parent container
@@ -308,7 +308,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
           zIndex: 10
         }}
       />
-      
+
       {cullingStats && (
         <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.7)', color: 'white', padding: '4px 8px', fontSize: '12px', borderRadius: '4px', zIndex: 10 }}>
           <div>Original Nodes: {cullingStats.originalCount}</div>
@@ -323,8 +323,8 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
         getNetwork={(networkInstance: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
           networkRef.current = networkInstance;
         }}
-        style={{ 
-          width: '100%', 
+        style={{
+          width: '100%',
           height: '100%'
         }}
       />
@@ -360,4 +360,4 @@ export default PetriDish;
 //     <div>Zoom: {metrics.zoomLevel?.toFixed(2)}</div>
 //     {stats && <div>Culled: {(stats.cullingRatio * 100).toFixed(1)}%</div>}
 //   </div>
-// ); 
+// );
