@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -215,7 +215,7 @@ export default function Dashboard() {
 
   const handleSaveSimulation = useCallback(async (name: string, description?: string) => {
     if (!simulation) return;
-    
+
     setSavingSimulation(true);
     try {
       await simulationApiSimple.saveSimulationSnapshot(
@@ -254,7 +254,7 @@ export default function Dashboard() {
       const latestIndex = simulation.statistics.totalPopulation.length - 1;
       const totalCount = simulation.statistics.totalPopulation[latestIndex];
       const resistantCount = simulation.statistics.resistantCount[latestIndex];
-      
+
       return {
         totalPopulation: totalCount,
         resistantCount: resistantCount,
@@ -265,7 +265,7 @@ export default function Dashboard() {
     } else if (displayBacteria.length > 0) {
       const totalCount = displayBacteria.length;
       const resistantCount = displayBacteria.filter(b => b.isResistant).length;
-      
+
       return {
         totalPopulation: totalCount,
         resistantCount: resistantCount,
@@ -274,7 +274,7 @@ export default function Dashboard() {
         isLiveData: false
       };
     }
-    
+
     // Default fallback
     return {
       totalPopulation: 0,
@@ -602,10 +602,10 @@ export default function Dashboard() {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Bacteria Legend */}
                     <BacteriaLegend />
-                    
+
                     <PetriDish
                       bacteria={displayBacteria}
                       width={600}
