@@ -417,7 +417,7 @@ export default function Dashboard() {
 
         {/* Main Content */}
         <div className="container mx-auto px-6 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             {/* Petri Dish Visualization */}
             <div className="lg:col-span-2">
               <Card
@@ -646,7 +646,7 @@ export default function Dashboard() {
                     backgroundColor: `${colors.surface.a10}cc`,
                     backdropFilter: "blur(12px)",
                     borderColor: colors.surface.a20,
-                    height: '280px' // Fixed height to prevent layout shifts
+                    height: '280px'
                   }}
                 >
                   <CardHeader className="pb-3">
@@ -755,14 +755,13 @@ export default function Dashboard() {
                   showAdvancedControls={true}
                 />
 
-                {/* Controls */}
+                {/* Parameters Only */}
                 <Card
-                  className="border"
+                  className="border flex-grow"
                   style={{
                     backgroundColor: `${colors.surface.a10}cc`,
                     backdropFilter: "blur(12px)",
                     borderColor: colors.surface.a20,
-                    height: 'calc(100% - 296px)' // Fill remaining space minus stats card + gap
                   }}
                 >
                   <CardHeader className="pb-3">
@@ -772,7 +771,7 @@ export default function Dashboard() {
                           className="h-5 w-5 mr-2"
                           style={{ color: colors.primary.a0 }}
                         />
-                        <span style={{ color: colors.light }}>Controls</span>
+                        <span style={{ color: colors.light }}>Parameters</span>
                       </div>
                       <ConnectionStatusCompact
                         isConnected={isConnected}
@@ -782,102 +781,102 @@ export default function Dashboard() {
                       />
                     </CardTitle>
                   </CardHeader>
-                  <CardContent style={{ height: 'calc(100% - 5rem)', overflow: 'hidden' }}>
-                    <Tabs defaultValue="parameters" className="h-full">
-                      <TabsList
-                        className="grid w-full grid-cols-3 border"
-                        style={{
-                          backgroundColor: colors.surface.a10,
-                          borderColor: colors.surface.a20,
-                        }}
-                      >
-                        <TabsTrigger
-                          value="parameters"
-                          className="text-sm data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=inactive]:text-gray-400 hover:text-white/80 transition-colors"
-                          style={{
-                            color: colors.surface.a50,
-                          }}
+                  <CardContent style={{ overflow: 'auto', height: 'calc(100% - 5rem)' }}>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="simulation-name"
+                          className="text-sm font-medium"
+                          style={{ color: colors.surface.a50 }}
                         >
-                          Parameters
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="charts"
-                          className="text-sm data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=inactive]:text-gray-400 hover:text-white/80 transition-colors"
+                          Simulation Name
+                        </Label>
+                        <Input
+                          id="simulation-name"
+                          value={simulationName}
+                          onChange={handleSimulationNameChange}
+                          placeholder="Enter simulation name"
+                          disabled={isLoading || !!simulation}
                           style={{
-                            color: colors.surface.a50,
+                            backgroundColor: colors.surface.a10,
+                            borderColor: colors.surface.a20,
+                            color: colors.light,
                           }}
-                        >
-                          <LuChartBar className="h-4 w-4 mr-1" />
-                          Charts
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="data"
-                          className="text-sm data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=inactive]:text-gray-400 hover:text-white/80 transition-colors"
-                          style={{
-                            color: colors.surface.a50,
-                          }}
-                        >
-                          <LuList className="h-4 w-4 mr-1" />
-                          Data
-                        </TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent
-                        value="parameters"
-                        className="mt-4 space-y-4"
-                      >
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="simulation-name"
-                            className="text-sm font-medium"
-                            style={{ color: colors.surface.a50 }}
-                          >
-                            Simulation Name
-                          </Label>
-                          <Input
-                            id="simulation-name"
-                            value={simulationName}
-                            onChange={handleSimulationNameChange}
-                            placeholder="Enter simulation name"
-                            disabled={isLoading || !!simulation}
-                            style={{
-                              backgroundColor: colors.surface.a10,
-                              borderColor: colors.surface.a20,
-                              color: colors.light,
-                            }}
-                          />
-                        </div>
-
-                        <Separator
-                          style={{ backgroundColor: colors.surface.a20 }}
                         />
+                      </div>
 
+                      <Separator
+                        style={{ backgroundColor: colors.surface.a20 }}
+                      />
+
+                      <div style={{ overflow: 'hidden' }}>
                         <SimulationParameterForm
                           onSubmit={handleSimulationSubmit}
                           isLoading={isLoading}
                           defaultValues={simulation?.parameters || undefined}
                           disabled={isSimulationRunning || !isConnected}
                         />
-                      </TabsContent>
-
-                      <TabsContent value="charts" className="mt-4">
-                        <StatisticsPanel
-                          statistics={simulation?.statistics}
-                          isLoading={isLoading}
-                        />
-                      </TabsContent>
-
-                      <TabsContent value="data" className="mt-4">
-                        <VirtualizedBacteriaList
-                          bacteria={displayBacteria}
-                          height={350}
-                        />
-                      </TabsContent>
-                    </Tabs>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
             </div>
+          </div>
+
+          {/* Charts and Data Section - Horizontal Cards Below */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+            {/* Charts Card */}
+            <Card
+              className="border"
+              style={{
+                backgroundColor: `${colors.surface.a10}cc`,
+                backdropFilter: "blur(12px)",
+                borderColor: colors.surface.a20,
+              }}
+            >
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center">
+                  <LuChartBar
+                    className="h-5 w-5 mr-2"
+                    style={{ color: colors.primary.a0 }}
+                  />
+                  <span style={{ color: colors.light }}>Charts</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StatisticsPanel
+                  statistics={simulation?.statistics}
+                  isLoading={isLoading}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Data Card */}
+            <Card
+              className="border"
+              style={{
+                backgroundColor: `${colors.surface.a10}cc`,
+                backdropFilter: "blur(12px)",
+                borderColor: colors.surface.a20,
+              }}
+            >
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center">
+                  <LuList
+                    className="h-5 w-5 mr-2"
+                    style={{ color: colors.primary.a0 }}
+                  />
+                  <span style={{ color: colors.light }}>Data</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VirtualizedBacteriaList
+                  bacteria={displayBacteria}
+                  height={350}
+                />
+              </CardContent>
+            </Card>
           </div>
         </div>
 
