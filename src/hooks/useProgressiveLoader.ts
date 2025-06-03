@@ -6,7 +6,6 @@ import {
   ProgressiveLoadingConfig, 
   LoadingStrategy,
   SimulationLoadingStrategy,
-  ChunkPriority,
   ProgressCallback
 } from "@/lib/progressiveLoader";
 import { Bacterium, Simulation } from "@/types/simulation";

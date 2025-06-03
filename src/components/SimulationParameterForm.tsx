@@ -1,13 +1,11 @@
 "use client";
 
-import React, { memo, useCallback } from "react";
+import React, { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -19,7 +17,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -57,12 +54,12 @@ interface SimulationParameterFormProps {
   disabled?: boolean;
 }
 
-const SimulationParameterForm = memo<SimulationParameterFormProps>(function SimulationParameterForm({
+const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
   onSubmit,
   isLoading = false,
   defaultValues,
   disabled = false,
-}: SimulationParameterFormProps) {
+}) => {
   const form = useForm<SimulationParametersInput>({
     resolver: zodResolver(simulationParametersSchema),
     defaultValues: {
@@ -91,8 +88,6 @@ const SimulationParameterForm = memo<SimulationParameterFormProps>(function Simu
   const handleReset = useCallback(() => {
     form.reset(simulationPresets.default);
   }, [form]);
-
-  const watchedValues = form.watch();
 
   return (
     <Card className="backdrop-blur-md bg-white/40 dark:bg-slate-900/40 border border-white/30 dark:border-slate-700/30">
@@ -479,6 +474,6 @@ const SimulationParameterForm = memo<SimulationParameterFormProps>(function Simu
       </CardContent>
     </Card>
   );
-});
+};
 
 export default SimulationParameterForm;

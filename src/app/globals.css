@@ -6,16 +6,16 @@ html:not(.css-loaded) {
   color: #ffffff !important;
 }
 
-html:not(.css-loaded) body::before {
-  content: "Loading styles...";
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #ffffff;
-  font-family: system-ui, sans-serif;
-  z-index: 9999;
-}
+/* html:not(.css-loaded) body::before { */ /* Commented out to hide 'Loading styles...' text */
+/*  content: "Loading styles..."; */
+/*  position: fixed; */
+/*  top: 50%; */
+/*  left: 50%; */
+/*  transform: translate(-50%, -50%); */
+/*  color: #ffffff; */
+/*  font-family: system-ui, sans-serif; */
+/*  z-index: 9999; */
+/* } */
 
 :root {
   /** Base colors */
@@ -58,14 +58,14 @@ body {
   color: var(--clr-light-a0, #ffffff) !important;
   font-family: var(--font-geist-sans, system-ui, sans-serif) !important;
   /* Prevent flash of unstyled content */
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out;
+  /* opacity: 0; */ /* Commented out for testing */
+  /* transition: opacity 0.2s ease-in-out; */ /* Commented out for testing */
 }
 
 /* Show body once CSS is loaded */
-html.css-loaded body {
-  opacity: 1;
-}
+/* html.css-loaded body { */ /* Commented out for testing */
+  /* opacity: 1; */ /* Commented out for testing */
+/* } */ /* Commented out for testing */
 
 /* Custom theme classes */
 .bg-primary {

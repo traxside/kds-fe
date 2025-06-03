@@ -25,7 +25,7 @@ import {
   LuSave,
   LuFolderOpen,
 } from "react-icons/lu";
-import PetriDish from "@/components/PetriDish/PetriDishRefactored";
+import PetriDish from "@/components/PetriDishComponent";
 import SimulationParameterForm from "@/components/SimulationParameterForm";
 import StatisticsPanel from "@/components/StatisticsPanel";
 import SimulationControls from "@/components/SimulationControls";
@@ -39,6 +39,8 @@ import {
 import { useSimulationContext } from "@/context/SimulationContext";
 import { Bacterium, SimulationParametersInput, Simulation } from "@/types/simulation";
 import { simulationApiSimple } from "@/lib/api";
+import Image from "next/image";
+import { BacteriaLegend } from "@/components/BacteriaLegend";
 
 // Move colors outside component to prevent recreation on every render
 const colors = {
@@ -305,10 +307,12 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="relative">
-                  <img
+                  <Image
                     src="/icon1.png"
-                    alt="Bacteria Simulation"
-                    className="h-7 w-7"
+                    alt="Bacteria Simulation Logo"
+                    className="h-10 w-10 object-cover shadow-lg"
+                    width={40}
+                    height={40}
                   />
                   <div
                     className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full animate-pulse ${
@@ -598,6 +602,10 @@ export default function Dashboard() {
                         </div>
                       </div>
                     )}
+                    
+                    {/* Bacteria Legend */}
+                    <BacteriaLegend />
+                    
                     <PetriDish
                       bacteria={displayBacteria}
                       width={600}
@@ -605,8 +613,6 @@ export default function Dashboard() {
                       isSimulationRunning={isSimulationRunning}
                       maxDisplayNodes={1000}
                       enableSpatialSampling={true}
-                      enableAdaptivePerformance={true}
-                      onToggleSimulation={handlePlayPause}
                       onBacteriumClick={(bacterium) => {
                         console.log("Clicked bacterium:", bacterium);
                       }}
@@ -640,6 +646,7 @@ export default function Dashboard() {
                     backgroundColor: `${colors.surface.a10}cc`,
                     backdropFilter: "blur(12px)",
                     borderColor: colors.surface.a20,
+                    height: '280px' // Fixed height to prevent layout shifts
                   }}
                 >
                   <CardHeader className="pb-3">
@@ -750,11 +757,12 @@ export default function Dashboard() {
 
                 {/* Controls */}
                 <Card
-                  className="flex-1 border"
+                  className="border"
                   style={{
                     backgroundColor: `${colors.surface.a10}cc`,
                     backdropFilter: "blur(12px)",
                     borderColor: colors.surface.a20,
+                    height: 'calc(100% - 296px)' // Fill remaining space minus stats card + gap
                   }}
                 >
                   <CardHeader className="pb-3">
@@ -774,7 +782,7 @@ export default function Dashboard() {
                       />
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="h-[calc(100%-5rem)]">
+                  <CardContent style={{ height: 'calc(100% - 5rem)', overflow: 'hidden' }}>
                     <Tabs defaultValue="parameters" className="h-full">
                       <TabsList
                         className="grid w-full grid-cols-3 border"

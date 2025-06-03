@@ -6,7 +6,7 @@ import { SimulationStepResult } from "@/lib/simulation-engine";
 interface WorkerMessage {
   id: string;
   type: string;
-  payload: any;
+  payload: unknown;
 }
 
 interface InitializeMessage extends WorkerMessage {
@@ -74,7 +74,7 @@ interface UseSimulationWorkerReturn {
   terminateWorker: () => Promise<void>;
   
   // Performance metrics
-  getPerformanceMetrics: () => Promise<any>;
+  getPerformanceMetrics: () => Promise<unknown>;
 }
 
 export function useSimulationWorker(
@@ -83,7 +83,6 @@ export function useSimulationWorker(
   const {
     enableWorker = true,
     fallbackToMainThread = true,
-    batchSize = 10,
   } = options;
 
   // State
@@ -98,9 +97,9 @@ export function useSimulationWorker(
   const workerRef = useRef<Worker | null>(null);
   const messageIdRef = useRef(0);
   const pendingPromisesRef = useRef<Map<string, {
-    resolve: (value: any) => void;
+    resolve: (value: unknown) => void;
     reject: (error: Error) => void;
-    onProgress?: (progress: any) => void;
+    onProgress?: (progress: unknown) => void;
   }>>(new Map());
 
   // Check if workers are supported
@@ -112,7 +111,7 @@ export function useSimulationWorker(
   }, []);
 
   // Send message to worker
-  const sendMessage = useCallback((message: WorkerMessage): Promise<any> => {
+  const sendMessage = useCallback((message: WorkerMessage): Promise<unknown> => {
     return new Promise((resolve, reject) => {
       if (!workerRef.current || !workerState.isReady) {
         reject(new Error("Worker not ready"));
@@ -138,8 +137,8 @@ export function useSimulationWorker(
   // Send message with progress callback
   const sendMessageWithProgress = useCallback((
     message: WorkerMessage,
-    onProgress?: (progress: any) => void
-  ): Promise<any> => {
+    onProgress?: (progress: unknown) => void
+  ): Promise<unknown> => {
     return new Promise((resolve, reject) => {
       if (!workerRef.current || !workerState.isReady) {
         reject(new Error("Worker not ready"));
@@ -196,9 +195,9 @@ export function useSimulationWorker(
         setWorkerState(prev => ({
           ...prev,
           progress: {
-            current: payload.currentStep,
-            total: payload.totalSteps,
-            percentage: payload.progress * 100,
+            current: (payload as { currentStep: number }).currentStep,
+            total: (payload as { totalSteps: number }).totalSteps,
+            percentage: (payload as { progress: number }).progress * 100,
           },
         }));
         break;
@@ -208,11 +207,11 @@ export function useSimulationWorker(
         const pending = pendingPromisesRef.current.get(id);
         if (pending) {
           pendingPromisesRef.current.delete(id);
-          pending.reject(new Error(payload.error));
+          pending.reject(new Error((payload as { error: string }).error));
         }
         setWorkerState(prev => ({ 
           ...prev, 
-          error: payload.error, 
+          error: (payload as { error: string }).error, 
           isWorking: false,
           progress: null,
         }));
@@ -222,18 +221,18 @@ export function useSimulationWorker(
   }, []);
 
   // Handle worker errors
-  const handleWorkerError = useCallback((error: ErrorEvent) => {
-    console.error("Worker error:", error);
+  const handleWorkerError = useCallback((event: ErrorEvent) => {
+    console.error("Worker error:", event);
     setWorkerState(prev => ({ 
       ...prev, 
-      error: error.message, 
+      error: event.message, 
       isWorking: false,
       progress: null,
     }));
     
     // Reject all pending promises
     pendingPromisesRef.current.forEach(({ reject }) => {
-      reject(new Error("Worker error: " + error.message));
+      reject(new Error("Worker error: " + event.message));
     });
     pendingPromisesRef.current.clear();
   }, []);
@@ -250,11 +249,11 @@ export function useSimulationWorker(
       workerRef.current.addEventListener('error', handleWorkerError);
       
       setWorkerState(prev => ({ ...prev, error: null }));
-    } catch (error) {
-      console.error("Failed to create worker:", error);
+    } catch (err) {
+      console.error("Failed to create worker:", err);
       setWorkerState(prev => ({ 
         ...prev, 
-        error: error instanceof Error ? error.message : "Failed to create worker" 
+        error: err instanceof Error ? err.message : "Failed to create worker" 
       }));
     }
   }, [isWorkerSupported, enableWorker, handleWorkerMessage, handleWorkerError]);
@@ -280,7 +279,10 @@ export function useSimulationWorker(
       payload: { parameters },
     };
 
-    return sendMessage(message);
+    return sendMessage(message) as Promise<{
+      bacteria: Bacterium[];
+      statistics: SimulationStepResult['statistics'];
+    }>;
   }, [enableWorker, workerState.isReady, fallbackToMainThread, generateMessageId, sendMessage]);
 
   // Calculate single step
@@ -305,7 +307,7 @@ export function useSimulationWorker(
       payload: { bacteria, parameters },
     };
 
-    return sendMessage(message);
+    return sendMessage(message) as Promise<SimulationStepResult>;
   }, [enableWorker, workerState.isReady, fallbackToMainThread, generateMessageId, sendMessage]);
 
   // Calculate batch steps
@@ -356,7 +358,28 @@ export function useSimulationWorker(
       },
     };
 
-    return sendMessageWithProgress(message, onProgress);
+    // Create a type-safe wrapper for the progress callback
+    const progressWrapper = onProgress ? (progress: unknown) => {
+      // Type-safe casting based on expected worker progress payload structure
+      if (progress && typeof progress === 'object' && 
+          'currentStep' in progress && 'totalSteps' in progress &&
+          'bacteria' in progress && 'statistics' in progress) {
+        const typedProgress = progress as { 
+          currentStep: number; 
+          totalSteps: number; 
+          bacteria: Bacterium[]; 
+          statistics: SimulationStepResult['statistics'] 
+        };
+        onProgress({
+          current: typedProgress.currentStep,
+          total: typedProgress.totalSteps,
+          bacteria: typedProgress.bacteria,
+          statistics: typedProgress.statistics,
+        });
+      }
+    } : undefined;
+
+    return sendMessageWithProgress(message, progressWrapper) as Promise<SimulationStepResult>;
   }, [enableWorker, workerState.isReady, fallbackToMainThread, generateMessageId, sendMessageWithProgress]);
 
   // Terminate worker
@@ -371,7 +394,7 @@ export function useSimulationWorker(
 
     try {
       await sendMessage(message);
-    } catch (error) {
+    } catch {
       // Ignore termination errors
     }
 

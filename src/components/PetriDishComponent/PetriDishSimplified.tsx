@@ -14,14 +14,6 @@ interface GraphNode {
   bacterium: Bacterium;
 }
 
-interface ForceGraphInstance {
-  graphData: (data?: { nodes: GraphNode[]; links: never[] }) => { nodes: GraphNode[]; links: never[] } | void;
-}
-
-interface NodeClickHandler {
-  (node: GraphNode): void;
-}
-
 interface ZoomTransform {
   k: number;
   x: number;
@@ -50,7 +42,7 @@ const PetriDishSimplified = memo<SimplifiedPetriDishProps>(function PetriDishSim
   height = 600,
   onBacteriumClick,
 }: SimplifiedPetriDishProps) {
-  const graphRef = useRef<ForceGraphInstance>(null);
+  const graphRef = useRef(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -80,13 +72,14 @@ const PetriDishSimplified = memo<SimplifiedPetriDishProps>(function PetriDishSim
     return { nodes, links };
   }, [bacteria]);
 
-  const handleNodeClick: NodeClickHandler = useCallback((node: GraphNode) => {
+  const handleNodeClick = useCallback((node: { [key: string]: unknown; id?: string | number; x?: number; y?: number; bacterium?: Bacterium }) => {
     if (onBacteriumClick && node.bacterium) {
       onBacteriumClick(node.bacterium);
     }
   }, [onBacteriumClick]);
 
-  const nodeColorFunction = useCallback((node: GraphNode): string => {
+  const nodeColorFunction = useCallback((node: { [key: string]: unknown; id?: string | number; x?: number; y?: number; isResistant?: boolean }): string => {
+    // We know our nodes have isResistant property from our graphData
     if (node.isResistant) return '#ff4444';
     return '#4444ff';
   }, []);
@@ -107,7 +100,7 @@ const PetriDishSimplified = memo<SimplifiedPetriDishProps>(function PetriDishSim
   return (
     <div style={{ width, height }}>
       <ForceGraph2D
-        ref={graphRef}
+        ref={graphRef as unknown as React.MutableRefObject<undefined>}
         graphData={graphData}
         width={width}
         height={height}
@@ -135,14 +128,15 @@ const PetriDishSimplified = memo<SimplifiedPetriDishProps>(function PetriDishSim
         
         // Simple node rendering
         nodeCanvasObjectMode={() => "after"}
-        nodeCanvasObject={(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
-          const label = `${node.generation}`;
+        nodeCanvasObject={(node: { [key: string]: unknown; id?: string | number; x?: number; y?: number }, ctx: CanvasRenderingContext2D, globalScale: number) => {
+          const graphNode = node as unknown as GraphNode; // Assert to our specific GraphNode type
+          const label = `${graphNode.generation}`;
           const fontSize = 12 / globalScale;
           ctx.font = `${fontSize}px Sans-Serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillStyle = node.isResistant ? '#ffffff' : '#000000';
-          ctx.fillText(label, node.x!, node.y!);
+          ctx.fillStyle = graphNode.isResistant ? '#ffffff' : '#000000';
+          ctx.fillText(label, graphNode.x!, graphNode.y!);
         }}
       />
     </div>

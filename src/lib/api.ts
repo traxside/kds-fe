@@ -13,7 +13,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     public message: string,
-    public data?: any,
+    public data?: unknown,
     public code?: string
   ) {
     super(message);
@@ -23,7 +23,7 @@ export class ApiError extends Error {
 
 // Logging utility
 const apiLogger = {
-  log: (level: "info" | "error" | "warn", message: string, data?: any) => {
+  log: (level: "info" | "error" | "warn", message: string, data?: unknown) => {
     if (process.env.NODE_ENV === "development") {
       console[level](`[API] ${message}`, data || "");
     }
@@ -90,10 +90,10 @@ api.interceptors.response.use(
     // Transform Axios error to our ApiError format
     if (error.response) {
       // Server responded with error status
-      const errorData = error.response.data as any; // Type assertion for error response data
+      const errorData = error.response.data as Record<string, unknown>; // Type assertion for error response data
       const apiError = new ApiError(
         error.response.status,
-        errorData?.message ||
+        errorData?.message as string ||
           `HTTP ${error.response.status}: ${error.response.statusText}`,
         errorData,
         error.code
@@ -178,7 +178,7 @@ export const simulationApi = {
   ) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.post<Simulation>("/simulations", data, axiosConfig)
@@ -189,7 +189,7 @@ export const simulationApi = {
   getSimulations: (config?: AxiosRequestConfig & { signal?: AbortSignal }) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.get<Simulation[]>("/simulations", axiosConfig)
@@ -203,7 +203,7 @@ export const simulationApi = {
   ) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.get<Simulation>(`/simulations/${id}`, axiosConfig)
@@ -218,7 +218,7 @@ export const simulationApi = {
   ) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.put<Simulation>(`/simulations/${id}`, data, axiosConfig)
@@ -232,7 +232,7 @@ export const simulationApi = {
   ) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.post<Simulation>(`/simulations/${id}/start`, {}, axiosConfig)
@@ -246,7 +246,7 @@ export const simulationApi = {
   ) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.post<Simulation>(`/simulations/${id}/stop`, {}, axiosConfig)
@@ -260,7 +260,7 @@ export const simulationApi = {
   ) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.post<Simulation>(`/simulations/${id}/reset`, {}, axiosConfig)
@@ -274,7 +274,7 @@ export const simulationApi = {
   ) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.delete<void>(`/simulations/${id}`, axiosConfig)
@@ -288,7 +288,7 @@ export const simulationApi = {
   ) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.post<Simulation>(`/simulations/${id}/step`, {}, axiosConfig)
@@ -299,9 +299,9 @@ export const simulationApi = {
   healthCheck: (config?: AxiosRequestConfig & { signal?: AbortSignal }) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
-    return retryRequest(() => api.get<any>("/health", axiosConfig));
+    return retryRequest(() => api.get<unknown>("/health", axiosConfig));
   },
 
   // Save simulation snapshot (clone current state with new name)
@@ -312,7 +312,7 @@ export const simulationApi = {
   ) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.post<Simulation>(`/simulations/${sourceId}/snapshot`, data, axiosConfig)
@@ -326,7 +326,7 @@ export const simulationApi = {
   ) => {
     const { signal, ...axiosConfig } = config || {};
     if (signal) {
-      (axiosConfig as any).signal = signal;
+      (axiosConfig as AxiosRequestConfig).signal = signal;
     }
     return retryRequest(() =>
       api.get<Simulation>(`/simulations/${id}`, axiosConfig)
@@ -474,8 +474,7 @@ export const mockSimulationApi = {
   // Mock methods
   async createSimulation(
     name: string,
-    parameters: SimulationParametersInput,
-    signal?: AbortSignal
+    parameters: SimulationParametersInput
   ): Promise<Simulation> {
     await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
 
@@ -510,12 +509,12 @@ export const mockSimulationApi = {
     return newSimulation;
   },
 
-  async getSimulations(signal?: AbortSignal): Promise<Simulation[]> {
+  async getSimulations(): Promise<Simulation[]> {
     await new Promise((resolve) => setTimeout(resolve, 300));
     return [...this.mockSimulations];
   },
 
-  async getSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
+  async getSimulation(id: string): Promise<Simulation> {
     await new Promise((resolve) => setTimeout(resolve, 200));
     const simulation = this.mockSimulations.find((s) => s.id === id);
     if (!simulation) {
@@ -524,7 +523,7 @@ export const mockSimulationApi = {
     return simulation;
   },
 
-  async deleteSimulation(id: string, signal?: AbortSignal): Promise<void> {
+  async deleteSimulation(id: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 300));
     const index = this.mockSimulations.findIndex((s) => s.id === id);
     if (index === -1) {
@@ -533,7 +532,7 @@ export const mockSimulationApi = {
     this.mockSimulations.splice(index, 1);
   },
 
-  async healthCheck(signal?: AbortSignal) {
+  async healthCheck() {
     await new Promise((resolve) => setTimeout(resolve, 100));
     return {
       status: "healthy",
@@ -550,8 +549,7 @@ export const mockSimulationApi = {
   async saveSimulationSnapshot(
     sourceId: string,
     name: string,
-    description?: string,
-    signal?: AbortSignal
+    description?: string
   ): Promise<Simulation> {
     await new Promise((resolve) => setTimeout(resolve, 500));
     
@@ -576,8 +574,8 @@ export const mockSimulationApi = {
   },
 
   // Load simulation (alias for getSimulation)
-  async loadSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
-    return this.getSimulation(id, signal);
+  async loadSimulation(id: string): Promise<Simulation> {
+    return this.getSimulation(id);
   },
 };
 

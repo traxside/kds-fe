@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { 
   Simulation, 
@@ -153,7 +152,7 @@ export default function SimulationMetadataEditor({
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
-            Customize metadata for "{simulation.name}"
+            Customize metadata for &quot;{simulation.name}&quot;
           </p>
         </CardHeader>
 

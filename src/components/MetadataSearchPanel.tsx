@@ -22,8 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { 
   SimulationSearchFilters, 
-  simulationCategories, 
-  SimulationCategory 
+  simulationCategories
 } from "@/types/simulation";
 
 interface MetadataSearchPanelProps {
@@ -45,7 +44,6 @@ export default function MetadataSearchPanel({
 }: MetadataSearchPanelProps) {
   const [isExpanded, setIsExpanded] = useState(!compact);
   const [dateRangeExpanded, setDateRangeExpanded] = useState(false);
-  const [parameterRangeExpanded, setParameterRangeExpanded] = useState(false);
 
   const handleFilterChange = useCallback((updates: Partial<SimulationSearchFilters>) => {
     onFiltersChange({ ...filters, ...updates });

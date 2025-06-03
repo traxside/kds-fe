@@ -1,14 +1,13 @@
 "use client";
 
 import React, { memo, useMemo, useState, useCallback } from "react";
-import { FixedSizeList as List } from "react-window";
+import { FixedSizeList as List, ListChildComponentProps } from "react-window";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { LuSearch, LuChevronUp, LuChevronDown, LuArrowUpDown } from "react-icons/lu";
 
 // Generic column definition interface
-export interface ColumnDefinition<T = any> {
+export interface ColumnDefinition<T = unknown> {
   key: string;
   title: string;
   width?: number;
@@ -16,10 +15,10 @@ export interface ColumnDefinition<T = any> {
   render?: (item: T, index: number) => React.ReactNode;
   sortable?: boolean;
   searchable?: boolean;
-  accessor?: (item: T) => any; // For sorting and searching
+  accessor?: (item: T) => string | number; // For sorting and searching
 }
 
-interface VirtualizedDataTableProps<T = any> {
+interface VirtualizedDataTableProps<T = unknown> {
   data: T[];
   columns: ColumnDefinition<T>[];
   height?: number;
@@ -30,34 +29,33 @@ interface VirtualizedDataTableProps<T = any> {
   sortable?: boolean;
   title?: string;
   emptyMessage?: string;
-  keyExtractor?: (item: T, index: number) => string;
 }
 
-interface TableRowProps {
+interface TableRowProps<T = unknown> {
   index: number;
   style: React.CSSProperties;
   data: {
-    filteredData: any[];
-    columns: ColumnDefinition<any>[];
-    onSelect?: (item: any, index: number) => void;
+    filteredData: T[];
+    columns: ColumnDefinition<T>[];
+    onSelect?: (item: T, index: number) => void;
     selectedIndex?: number;
     originalIndices: number[];
   };
 }
 
 // Individual table row component
-const TableRow = memo(function TableRow({
+const TableRow = memo(function TableRow<T>({
   index,
   style,
   data,
-}: TableRowProps) {
+}: TableRowProps<T>) {
   const item = data.filteredData[index];
   const originalIndex = data.originalIndices[index];
   const isSelected = data.selectedIndex === originalIndex;
 
   const handleClick = useCallback(() => {
     data.onSelect?.(item, originalIndex);
-  }, [data.onSelect, item, originalIndex]);
+  }, [data, item, originalIndex]);
 
   if (!item) {
     return <div style={style}>Loading...</div>;
@@ -74,13 +72,12 @@ const TableRow = memo(function TableRow({
           }
         `}
         onClick={handleClick}
-      >
-        {data.columns.map((column, colIndex) => {
+      >        {data.columns.map((column) => {
           const cellContent = column.render 
             ? column.render(item, originalIndex)
             : column.accessor 
               ? column.accessor(item)
-              : (item as any)[column.key];
+              : (item as Record<string, unknown>)[column.key];
 
           return (
             <div
@@ -91,16 +88,16 @@ const TableRow = memo(function TableRow({
                 minWidth: column.minWidth || 100,
               }}
             >
-              {cellContent}
+              {cellContent as React.ReactNode}
             </div>
           );
         })}
       </div>
     </div>
   );
-});
+}) as <T>(props: TableRowProps<T>) => React.JSX.Element;
 
-function VirtualizedDataTable<T = any>({
+function VirtualizedDataTable<T = unknown>({
   data,
   columns,
   height = 400,
@@ -111,7 +108,6 @@ function VirtualizedDataTable<T = any>({
   sortable = true,
   title,
   emptyMessage = "No data available",
-  keyExtractor,
 }: VirtualizedDataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -134,7 +130,7 @@ function VirtualizedDataTable<T = any>({
         const matchesSearch = searchableColumns.some(column => {
           const value = column.accessor 
             ? column.accessor(item)
-            : (item as any)[column.key];
+            : (item as Record<string, unknown>)[column.key];
           
           return value && 
             value.toString().toLowerCase().includes(searchLower);
@@ -151,19 +147,27 @@ function VirtualizedDataTable<T = any>({
     if (sortable && sortColumn) {
       const sortCol = columns.find(col => col.key === sortColumn);
       if (sortCol && sortCol.sortable !== false) {
-        const combined = filtered.map((item, index) => ({ item, originalIndex: indices[index] }));
-        
-        combined.sort((a, b) => {
+        const combined = filtered.map((item, index) => ({ item, originalIndex: indices[index] }));        combined.sort((a, b) => {
           const aValue = sortCol.accessor 
             ? sortCol.accessor(a.item)
-            : (a.item as any)[sortColumn];
+            : (a.item as Record<string, unknown>)[sortColumn];
           const bValue = sortCol.accessor 
             ? sortCol.accessor(b.item)
-            : (b.item as any)[sortColumn];
+            : (b.item as Record<string, unknown>)[sortColumn];
 
           let comparison = 0;
-          if (aValue < bValue) comparison = -1;
-          else if (aValue > bValue) comparison = 1;
+          
+          // Type-safe comparison
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+            comparison = aValue.localeCompare(bValue);
+          } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+            comparison = aValue - bValue;
+          } else {
+            // Fallback to string comparison for other types
+            const aStr = String(aValue);
+            const bStr = String(bValue);
+            comparison = aStr.localeCompare(bStr);
+          }
 
           return sortDirection === 'asc' ? comparison : -comparison;
         });
@@ -276,7 +280,7 @@ function VirtualizedDataTable<T = any>({
             itemData={listData}
             overscanCount={5}
           >
-            {TableRow as any}
+            {TableRow as React.ComponentType<ListChildComponentProps>}
           </List>
         )}
       </CardContent>

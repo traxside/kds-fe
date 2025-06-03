@@ -1,6 +1,6 @@
 "use client";
 
-import { Simulation, SimulationParameters, Bacterium } from "@/types/simulation";
+import { Simulation } from "@/types/simulation";
 
 // Export formats supported
 export type ExportFormat = "json" | "csv";
@@ -98,7 +98,24 @@ export class SimulationExporter {
         return "ready";
       };
 
-      const exportData: any = {
+      const exportData: {
+        metadata: {
+          exportDate: string;
+          version: string;
+          type: string;
+        };
+        simulation: {
+          id: string;
+          name: string;
+          description?: string;
+          createdAt: string;
+          updatedAt: string;
+          status: string;
+          parameters?: typeof simulation.parameters;
+          statistics?: typeof simulation.statistics;
+          bacteria?: typeof simulation.currentState.bacteria;
+        };
+      } = {
         metadata: {
           exportDate: new Date().toISOString(),
           version: "1.0",
@@ -200,17 +217,16 @@ export class SimulationExporter {
       // Add statistics rows
       if (options.includeStatistics !== false && simulation.statistics) {
         const stats = simulation.statistics;
-        csvData.push({
-          type: "statistics",
-          total_population: JSON.stringify(stats.totalPopulation),
-          resistant_count: JSON.stringify(stats.resistantCount),
-          sensitive_count: JSON.stringify(stats.sensitiveCount),
-          average_fitness: JSON.stringify(stats.averageFitness),
-          mutation_events: JSON.stringify(stats.mutationEvents),
-          generations: JSON.stringify(stats.generations),
-          antibiotic_deaths: JSON.stringify(stats.antibioticDeaths),
-          natural_deaths: JSON.stringify(stats.naturalDeaths),
-          reproductions: JSON.stringify(stats.reproductions)
+        const headers = Object.keys(stats);
+        const csvRows: string[] = [headers.join(",")];
+        
+        stats.totalPopulation.forEach((_, index) => {
+          const row = headers.map(header => {
+            const key = header.toLowerCase().replace(/\s+/g, "") as keyof typeof stats;
+            const values = stats[key] as number[];
+            return values[index]?.toString() || "0";
+          });
+          csvRows.push(row.join(","));
         });
       }
 
@@ -218,7 +234,7 @@ export class SimulationExporter {
 
       // Add bacteria data if requested
       if (options.includeBacteriaData && simulation.currentState?.bacteria) {
-        simulation.currentState.bacteria.forEach((bacterium, index) => {
+        simulation.currentState.bacteria.forEach((bacterium) => {
           csvData.push({
             type: "bacterium",
             bacterium_id: bacterium.id,

@@ -1,6 +1,6 @@
 import React from "react";
 import { Bacterium } from "@/types/simulation";
-import { GraphData, CullingStats, PerformanceMetrics, OptimalParameters } from "../types";
+import { GraphData, GraphNode, CullingStats, PerformanceMetrics, OptimalParameters } from "../types";
 import { PerformanceMonitor } from "@/lib/performance";
 
 interface StatisticsOverlayProps {
@@ -97,7 +97,7 @@ export function StatisticsOverlay({
   );
 }
 
-function calculateNodeSpread(nodes: any[]): number {
+function calculateNodeSpread(nodes: GraphNode[]): number {
   if (nodes.length === 0) return 0;
   
   const centerX = nodes.reduce((sum, node) => sum + (node.x || 0), 0) / nodes.length;

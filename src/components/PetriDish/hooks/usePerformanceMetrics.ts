@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { PerformanceMetrics, OptimalParameters } from "../types";
+import { ZoomTransform } from "d3-zoom";
 
 export function usePerformanceMetrics(
   bacteriaLength: number,
@@ -36,7 +37,7 @@ export function usePerformanceMetrics(
     }
   }, [bacteriaLength, enableAdaptivePerformance]);
 
-  const handleZoom = useCallback((transform: any) => {
+  const handleZoom = useCallback((transform: ZoomTransform) => {
     if (enableAdaptivePerformance) {
       setPerformanceMetrics(prev => ({
         ...prev,

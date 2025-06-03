@@ -32,6 +32,13 @@ export interface GraphLink {
   generation: number;
 }
 
+export interface GraphLinkResolved {
+  source: GraphNode;
+  target: GraphNode;
+  generation: number;
+  index?: number;
+}
+
 export interface GraphData {
   nodes: GraphNode[];
   links: GraphLink[];

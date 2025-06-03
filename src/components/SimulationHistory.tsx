@@ -19,19 +19,6 @@ import {
   ExportFormat 
 } from "@/lib/exportUtils";
 
-// Extended simulation type with pagination support
-interface PaginatedSimulationsResponse {
-  simulations: Simulation[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-}
-
 interface SimulationHistoryProps {
   onLoadSimulation?: (simulation: Simulation) => void;
   selectedSimulationIds?: string[];
@@ -147,10 +134,6 @@ export default function SimulationHistory({
   }, [allowMultiSelect]);
 
   // Handle actions
-  const handleLoadSimulation = useCallback(async (simulation: Simulation) => {
-    onLoadSimulation?.(simulation);
-  }, [onLoadSimulation]);
-
   const handleDeleteSimulation = useCallback(async (simulationId: string) => {
     if (!confirm("Are you sure you want to delete this simulation? This action cannot be undone.")) {
       return;
@@ -279,7 +262,7 @@ export default function SimulationHistory({
         <div>
           <div className="flex items-center space-x-2">
             <h2 className="text-2xl font-bold tracking-tight">
-              "Simulation History"
+              Simulation History
             </h2>
           </div>
           <p className="text-muted-foreground">

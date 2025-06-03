@@ -232,6 +232,7 @@ export function cullNodesWithDensityAwareness(
   ];
   
   // Remove density property and return original bacteria objects
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   return result.map(({ density, ...bacterium }) => bacterium as Bacterium);
 }
 

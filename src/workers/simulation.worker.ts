@@ -5,7 +5,7 @@ import { Bacterium, SimulationParametersInput } from "@/types/simulation";
 export interface WorkerMessage {
   id: string;
   type: string;
-  payload: any;
+  payload: unknown;
 }
 
 export interface InitializeMessage extends WorkerMessage {
@@ -35,7 +35,7 @@ export interface BatchStepMessage extends WorkerMessage {
 
 export interface TerminateMessage extends WorkerMessage {
   type: 'TERMINATE';
-  payload: {};
+  payload: Record<string, never>;
 }
 
 // Response message types

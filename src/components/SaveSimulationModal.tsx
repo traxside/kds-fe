@@ -249,7 +249,7 @@ const SaveSimulationModal: React.FC<SaveSimulationModalProps> = ({
                     Overwrite existing simulation?
                   </p>
                   <p className="text-xs text-orange-700 dark:text-orange-300">
-                    A simulation with the name "{name}" already exists. Saving will replace the existing simulation.
+                    A simulation with the name &quot;{name}&quot; already exists. Saving will replace the existing simulation.
                   </p>
                 </div>
               </div>

@@ -1,30 +1,26 @@
 "use client";
 
-import React, { useMemo, memo, useCallback } from "react";
+import React, { useMemo, memo } from "react";
 import {
   LineChart,
   Line,
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import {
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
   Activity,
-  Zap,
   Shield,
+  TrendingUp,
+  Microscope,
+  FileText,
 } from "lucide-react";
 import { SimulationStatistics } from "@/types/simulation";
 
@@ -45,7 +41,7 @@ const generateMockStatistics = (): SimulationStatistics => {
     resistantCount: generations.map((gen) =>
       Math.floor(Math.min(10 + gen * 1.5 + Math.random() * 15, gen * 2))
     ),
-    sensitiveCount: generations.map((gen, i) =>
+    sensitiveCount: generations.map((gen) =>
       Math.max(
         0,
         50 +
@@ -63,12 +59,25 @@ const generateMockStatistics = (): SimulationStatistics => {
 };
 
 // Memoized CustomTooltip component
-const CustomTooltip = memo(function CustomTooltip({ active, payload, label }: any) {
+interface TooltipPayload {
+  color: string;
+  name: string;
+  value: number;
+  dataKey: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
+const CustomTooltip = memo(function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg">
         <p className="font-medium">{`Generation ${label}`}</p>
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry: TooltipPayload, index: number) => (
           <p key={index} style={{ color: entry.color }} className="text-sm">
             {`${entry.name}: ${
               typeof entry.value === "number"
@@ -271,7 +280,7 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
                     tick={{ fill: "currentColor" }}
                   />
                   <YAxis fontSize={12} tick={{ fill: "currentColor" }} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <RechartsTooltip content={<CustomTooltip />} />
                   <Legend fontSize={12} />
                   <Line
                     type="monotone"
@@ -308,7 +317,7 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center">
-                <BarChart3 className="h-4 w-4 mr-2 text-red-600" />
+                <Microscope className="h-4 w-4 mr-2 text-red-600" />
                 Resistance Evolution
               </CardTitle>
             </CardHeader>
@@ -322,7 +331,7 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
                     tick={{ fill: "currentColor" }}
                   />
                   <YAxis fontSize={12} tick={{ fill: "currentColor" }} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <RechartsTooltip content={<CustomTooltip />} />
                   <Area
                     type="monotone"
                     dataKey="resistanceRatio"
@@ -358,7 +367,7 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center">
-                <Zap className="h-4 w-4 mr-2 text-purple-600" />
+                <FileText className="h-4 w-4 mr-2 text-purple-600" />
                 Fitness & Mutations
               </CardTitle>
             </CardHeader>
@@ -382,7 +391,7 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
                     fontSize={12}
                     tick={{ fill: "currentColor" }}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <RechartsTooltip content={<CustomTooltip />} />
                   <Legend fontSize={12} />
                   <Line
                     yAxisId="fitness"
@@ -393,12 +402,14 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
                     name="Avg Fitness"
                     dot={false}
                   />
-                  <Bar
+                  <Line
                     yAxisId="mutations"
+                    type="monotone"
                     dataKey="mutations"
-                    fill="#f59e0b"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
                     name="Mutations"
-                    opacity={0.6}
+                    dot={false}
                   />
                 </LineChart>
               </ResponsiveContainer>

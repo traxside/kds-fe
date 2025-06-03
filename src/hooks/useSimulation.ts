@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   Simulation,
   SimulationParametersInput,
-  SimulationState,
   Bacterium,
 } from "@/types/simulation";
 import simulationApiSimple, {
@@ -11,10 +10,10 @@ import simulationApiSimple, {
 } from "@/lib/api";
 import { 
   debounce, 
-  throttle, 
   adaptiveDebounce,
   globalUpdateScheduler,
-  UpdatePriority 
+  UpdatePriority,
+  type DebounceFunction
 } from "@/lib/debounce";
 import { 
   useSmartRefresh, 
@@ -175,22 +174,9 @@ export function useSimulation(
         console.warn(`Slow API fetch: ${fetchTime.toFixed(2)}ms for simulation ${id}`);
       }
     } catch (err) {
-      console.warn("Auto-refresh failed:", err);
-      if (isNetworkError(err)) {
-        if (enableBatching) {
-          globalUpdateScheduler.schedule({
-            id: 'connection-lost',
-            priority: UpdatePriority.HIGH,
-            callback: () => setIsConnected(false),
-            timestamp: Date.now(),
-          });
-        } else {
-          setIsConnected(false);
-        }
-      }
-      throw err; // Re-throw for smart refresh error handling
+      handleError(err);
     }
-  }, [enableBatching, prioritizeCriticalUpdates]); // Removed bacteria dependency
+  }, [enableBatching, prioritizeCriticalUpdates, bacteria, handleError]);
 
   // Create debounced/adaptive fetch function
   const optimizedFetch = useMemo(() => {
@@ -198,17 +184,23 @@ export function useSimulation(
       return fetchSimulationData;
     }
     
+    // Create wrapper function with proper typing for debounce functions
+    const wrappedFetch = (...args: unknown[]): unknown => {
+      const id = args[0] as string;
+      return fetchSimulationData(id);
+    };
+    
     return enableAdaptiveRefresh
-      ? adaptiveDebounce(fetchSimulationData, refreshInterval, {
+      ? adaptiveDebounce(wrappedFetch, refreshInterval, {
           minWait: refreshInterval / 2,
           maxWait: refreshInterval * 2,
           performanceThreshold: 200, // 200ms threshold for API calls
-        })
-      : debounce(fetchSimulationData, Math.min(refreshInterval / 2, 250), {
+        }) as typeof fetchSimulationData
+      : debounce(wrappedFetch, Math.min(refreshInterval / 2, 250), {
           leading: false,
           trailing: true,
           maxWait: refreshInterval,
-        });
+        }) as typeof fetchSimulationData;
   }, [fetchSimulationData, enableDebouncing, enableAdaptiveRefresh, refreshInterval]);
 
   // Check API connection
@@ -264,7 +256,11 @@ export function useSimulation(
   };
 
   const smartRefresh = useSmartRefresh(
-    () => simulation ? optimizedFetch(simulation.id) : Promise.resolve(),
+    async () => {
+      if (simulation) {
+        await optimizedFetch(simulation.id);
+      }
+    },
     autoRefresh && isSimulationRunning && simulation !== null && isConnected,
     smartRefreshOptions
   );
@@ -299,8 +295,8 @@ export function useSimulation(
           setIsConnected(true);
           setIsLoading(false);
         }
-      } catch (err) {
-        handleError(err);
+      } catch (_err) {
+        handleError(_err);
         setIsLoading(false);
       }
     },
@@ -337,8 +333,8 @@ export function useSimulation(
         setIsConnected(true);
         setIsLoading(false);
       }
-    } catch (err) {
-      handleError(err);
+    } catch (_err) {
+      handleError(_err);
       setIsLoading(false);
     }
   }, [simulation, enableBatching, handleError]);
@@ -373,8 +369,8 @@ export function useSimulation(
         setIsConnected(true);
         setIsLoading(false);
       }
-    } catch (err) {
-      handleError(err);
+    } catch (_err) {
+      handleError(_err);
       setIsLoading(false);
     }
   }, [simulation, enableBatching, handleError]);
@@ -409,8 +405,8 @@ export function useSimulation(
         setIsConnected(true);
         setIsLoading(false);
       }
-    } catch (err) {
-      handleError(err);
+    } catch (_err) {
+      handleError(_err);
       setIsLoading(false);
     }
   }, [simulation, enableBatching, handleError]);
@@ -445,8 +441,8 @@ export function useSimulation(
         setIsConnected(true);
         setIsLoading(false);
       }
-    } catch (err) {
-      handleError(err);
+    } catch (_err) {
+      handleError(_err);
       setIsLoading(false);
     }
   }, [simulation, enableBatching, handleError]);
@@ -478,8 +474,8 @@ export function useSimulation(
           setIsConnected(true);
           setIsLoading(false);
         }
-      } catch (err) {
-        handleError(err);
+      } catch (_err) {
+        handleError(_err);
         setIsLoading(false);
       }
     },
@@ -515,7 +511,7 @@ export function useSimulation(
             await fetchSimulationData(simulation.id);
           }
         } catch (err) {
-          // Handled by fetchSimulationData
+          handleError(err);
         }
       };
 
@@ -536,34 +532,34 @@ export function useSimulation(
   }, [
     autoRefresh,
     isSimulationRunning,
-    simulation?.id, // Only depend on the ID, not the entire simulation object
+    simulation,
     isConnected,
     refreshInterval,
-    fetchSimulationData, // Use the base fetch function instead of optimizedFetch
+    fetchSimulationData,
     enableAdaptiveRefresh,
+    handleError,
   ]);
-
-  // Connection check with debouncing
-  const debouncedConnectionCheck = useMemo(() => {
-    return enableDebouncing 
-      ? debounce(checkConnection, 5000, { leading: true, trailing: false })
-      : checkConnection;
-  }, [checkConnection, enableDebouncing]);
 
   // Periodic connection check
   useEffect(() => {
-    const connectionCheckInterval = setInterval(debouncedConnectionCheck, 30000);
+    const currentDebouncedCheck = enableDebouncing
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ? debounce((..._args: unknown[]) => checkConnection(), 5000, { leading: true, trailing: false }) as typeof checkConnection
+      : checkConnection;
+
+    const connectionCheckInterval = setInterval(currentDebouncedCheck, 30000);
 
     // Initial connection check
-    debouncedConnectionCheck();
+    currentDebouncedCheck();
 
     return () => {
       clearInterval(connectionCheckInterval);
       if (enableDebouncing) {
-        (debouncedConnectionCheck as any).cancel?.();
+        // When enableDebouncing is true, currentDebouncedCheck is DebounceFunction
+        (currentDebouncedCheck as DebounceFunction<(...args: unknown[]) => unknown>).cancel();
       }
     };
-  }, [debouncedConnectionCheck, enableDebouncing]);
+  }, [checkConnection, enableDebouncing]); // Removed debounce from dependencies
 
   return {
     // State

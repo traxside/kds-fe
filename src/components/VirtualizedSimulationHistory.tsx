@@ -55,7 +55,7 @@ const HistoryEventItem = memo<HistoryItemProps>(function HistoryEventItem({
 
   const handleClick = useCallback(() => {
     data.onSelect?.(event);
-  }, [data.onSelect, event]);
+  }, [data, event]);
 
   if (!event) {
     return <div style={style}>Loading...</div>;

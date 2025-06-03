@@ -1,7 +1,7 @@
 "use client";
 
 import React, { memo, useMemo, useState, useCallback, useEffect } from "react";
-import { FixedSizeList as List, ListOnScrollProps } from "react-window";
+import { FixedSizeList, ListOnScrollProps } from "react-window";
 import { Bacterium } from "@/types/simulation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,7 @@ const BacteriaListItem = memo<BacteriaListItemProps>(function BacteriaListItem({
     if (bacterium) {
       data.onSelect?.(bacterium);
     }
-  }, [data.onSelect, bacterium]);
+  }, [data, bacterium]);
 
   if (!bacterium) {
     return (
@@ -196,7 +196,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aValue: any, bValue: any;
+      let aValue: string | number, bValue: string | number;
       
       switch (sortBy) {
         case 'id':
@@ -245,7 +245,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
         console.error('Failed to load initial progressive data:', error);
       });
     }
-  }, [enableProgressiveLoading, dataLoader, progressiveLoader.isInitialized, height]);
+  }, [enableProgressiveLoading, dataLoader, progressiveLoader, height]);
 
   // Memoize list data to prevent unnecessary re-renders
   const listData = useMemo(() => ({
@@ -277,10 +277,10 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
   }, []);
 
   // Handle list scroll for progressive loading
-  const handleScroll = useCallback((props: any) => {
-    if (enableProgressiveLoading && dataLoader && progressiveLoader.isInitialized && props.scrollTop !== undefined) {
+  const handleScroll = useCallback((props: ListOnScrollProps) => {
+    if (enableProgressiveLoading && dataLoader && progressiveLoader.isInitialized && props.scrollOffset !== undefined) {
       const itemHeight = 80;
-      const startIndex = Math.floor(props.scrollTop / itemHeight);
+      const startIndex = Math.floor(props.scrollOffset / itemHeight);
       const visibleCount = Math.ceil(height / itemHeight);
       const endIndex = startIndex + visibleCount + 20; // Add buffer
       
@@ -295,7 +295,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
           const newItems = data.filter(item => !existingIds.has(item.id));
           return [...prevData, ...newItems];
         });
-      }).catch(error => {
+      }).catch((error) => {
         console.error('Failed to load progressive data on scroll:', error);
       });
     }
@@ -427,7 +427,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
             {progressiveLoader.state.isLoading ? "Loading bacteria data..." : "No bacteria found matching your criteria"}
           </div>
         ) : (
-          <List
+          <FixedSizeList
             height={height}
             width="100%"
             itemCount={filteredAndSortedBacteria.length}
@@ -437,7 +437,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
             onScroll={handleScroll}
           >
             {BacteriaListItem}
-          </List>
+          </FixedSizeList>
         )}
       </CardContent>
     </Card>

@@ -12,18 +12,16 @@
  * @since 1.0.0
  */
 
-import { useCallback, useEffect, useRef, useMemo, useState } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Bacterium } from "@/types/simulation";
 import { 
   debounce, 
   throttle, 
   adaptiveDebounce,
-  globalUpdateScheduler, 
   UpdatePriority,
-  debouncedUtils,
-  type DebounceFunction,
-  type ThrottleFunction
-} from '@/lib/debounce';
-import { Simulation, Bacterium, SimulationStatistics } from '@/types/simulation';
+  globalUpdateScheduler,
+} from "@/lib/debounce";
+import { Simulation, SimulationStatistics } from '@/types/simulation';
 
 /**
  * Options for debounced simulation updates
@@ -55,7 +53,6 @@ export function useDebouncedSimulationData(
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   // Create debounced fetch function
   const debouncedFetch = useMemo(() => {
     const fetchWrapper = async (id: string) => {
@@ -89,13 +86,20 @@ export function useDebouncedSimulationData(
       }
     };
 
+    // Type-safe wrapper that matches the debounce function signature
+    const wrapperForDebounce = (id: unknown) => {
+      if (typeof id === 'string') {
+        return fetchWrapper(id);
+      }
+    };
+
     return adaptiveMode 
-      ? adaptiveDebounce(fetchWrapper, autoRefreshDelay, {
+      ? adaptiveDebounce(wrapperForDebounce, autoRefreshDelay, {
           minWait: autoRefreshDelay / 2,
           maxWait: autoRefreshDelay * 2,
           performanceThreshold: 100, // Adjust based on API response time
         })
-      : debounce(fetchWrapper, autoRefreshDelay, {
+      : debounce(wrapperForDebounce, autoRefreshDelay, {
           leading: false,
           trailing: true,
         });
@@ -149,12 +153,10 @@ export function useThrottledForceGraph(
   const [throttledBacteria, setThrottledBacteria] = useState<Bacterium[]>(bacteria);
   const [isUpdating, setIsUpdating] = useState(false);
   const lastUpdateRef = useRef<number>(0);
-
   // Create throttled update function
   const throttledUpdate = useMemo(() => {
     const updateBacteria = (newBacteria: Bacterium[]) => {
       const now = Date.now();
-      const timeSinceLastUpdate = now - lastUpdateRef.current;
       
       // Check for critical updates (resistant bacteria emergence)
       // Get current bacteria state from the closure to avoid dependency issues
@@ -200,10 +202,18 @@ export function useThrottledForceGraph(
       }
     };
 
-    return throttle(updateBacteria, forceGraphUpdateDelay, {
+    // Type-safe wrapper that matches the throttle function signature
+    const wrapperForThrottle = (newBacteria: unknown) => {
+      if (Array.isArray(newBacteria)) {
+        return updateBacteria(newBacteria as Bacterium[]);
+      }
+    };
+
+    return throttle(wrapperForThrottle, forceGraphUpdateDelay, {
       leading: true,
       trailing: true,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     forceGraphUpdateDelay, 
     enableBatching, 
@@ -248,8 +258,7 @@ export function useBatchedStatistics(
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
 
   // Create debounced statistics calculator
-  const debouncedCalculateStats = useMemo(() => {
-    const calculateStats = (sim: Simulation) => {
+  const debouncedCalculateStats = useMemo(() => {    const calculateStats = (sim: Simulation) => {
       if (!sim) return;
 
       setIsCalculating(true);
@@ -274,7 +283,14 @@ export function useBatchedStatistics(
       }
     };
 
-    return debounce(calculateStats, statisticsUpdateDelay, {
+    // Type-safe wrapper that matches the debounce function signature
+    const wrapperForDebounce = (sim: unknown) => {
+      if (sim && typeof sim === 'object' && 'statistics' in sim) {
+        return calculateStats(sim as Simulation);
+      }
+    };
+
+    return debounce(wrapperForDebounce, statisticsUpdateDelay, {
       leading: false,
       trailing: true,
       maxWait: statisticsUpdateDelay * 2,
@@ -313,7 +329,7 @@ export function useBatchedStatistics(
  * Debounced parameter updates hook
  * Prevents excessive parameter change requests during rapid user input
  */
-export function useDebouncedParameters<T extends Record<string, any>>(
+export function useDebouncedParameters<T extends Record<string, unknown>>(
   initialParams: T,
   updateFunction: (params: Partial<T>) => Promise<void>,
   options: DebouncedSimulationOptions = {}
@@ -329,8 +345,7 @@ export function useDebouncedParameters<T extends Record<string, any>>(
   const pendingChangesRef = useRef<Partial<T>>({});
 
   // Create debounced update function
-  const debouncedUpdate = useMemo(() => {
-    const performUpdate = async (changes: Partial<T>) => {
+  const debouncedUpdate = useMemo(() => {    const performUpdate = async (changes: Partial<T>) => {
       if (Object.keys(changes).length === 0) return;
 
       setIsUpdating(true);
@@ -359,7 +374,14 @@ export function useDebouncedParameters<T extends Record<string, any>>(
       }
     };
 
-    return debounce(performUpdate, autoRefreshDelay, {
+    // Type-safe wrapper that matches the debounce function signature
+    const wrapperForDebounce = (changes: unknown) => {
+      if (changes && typeof changes === 'object') {
+        return performUpdate(changes as Partial<T>);
+      }
+    };
+
+    return debounce(wrapperForDebounce, autoRefreshDelay, {
       leading: false,
       trailing: true,
     });

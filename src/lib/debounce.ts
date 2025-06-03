@@ -1,4 +1,5 @@
 /**
+ /**
  * @fileoverview Debounce and throttle utilities for performance optimization
  * 
  * Provides comprehensive utilities for:
@@ -10,6 +11,8 @@
  * @author Bacteria Simulation Team
  * @since 1.0.0
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export type DebounceFunction<T extends (...args: any[]) => any> = T & {
   cancel: () => void;
@@ -57,14 +60,13 @@ export function debounce<T extends (...args: any[]) => any>(
     maxing = 'maxWait' in options;
     trailing = 'trailing' in options ? !!options.trailing : trailing;
   }
-
   function invokeFunc(time: number) {
     const args = lastArgs!;
     const thisArg = lastThis;
 
     lastArgs = lastThis = undefined;
     lastInvokeTime = time;
-    result = func.apply(thisArg, args);
+    result = func.apply(thisArg, args) as ReturnType<T>;
     return result;
   }
 
@@ -138,6 +140,7 @@ export function debounce<T extends (...args: any[]) => any>(
     const isInvoking = shouldInvoke(time);
 
     lastArgs = args;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     lastThis = this;
     lastCallTime = time;
 
@@ -205,9 +208,9 @@ export enum UpdatePriority {
 }
 
 /**
- * Update item for batching system
+ * Interface for scheduled updates
  */
-export interface UpdateItem<T = any> {
+export interface UpdateItem<T = unknown> {
   id: string;
   priority: UpdatePriority;
   callback: () => T;
@@ -216,7 +219,7 @@ export interface UpdateItem<T = any> {
 }
 
 /**
- * Batched update scheduler that groups multiple rapid updates
+ * Batches multiple updates and processes them efficiently
  */
 export class UpdateScheduler {
   private pendingUpdates = new Map<string, UpdateItem>();
@@ -240,33 +243,37 @@ export class UpdateScheduler {
   }
 
   /**
-   * Schedule an update to be batched with other updates
+   * Schedule an update to be processed in the next batch
    */
   schedule<T>(update: UpdateItem<T>): void {
-    this.pendingUpdates.set(update.id, update);
+    // Replace existing update with same ID
+    this.pendingUpdates.set(update.id, update as UpdateItem);
 
-    // Force flush for immediate priority updates
+    // Immediately flush high-priority updates
     if (update.priority === UpdatePriority.IMMEDIATE) {
       this.flush();
       return;
     }
 
-    // Force flush if batch size limit reached
-    if (this.pendingUpdates.size >= this.maxBatchSize) {
-      this.flush();
-      return;
-    }
-
-    // Schedule a flush if none is pending
+    // Schedule flush if not already scheduled
     if (!this.scheduledFlush) {
       this.scheduledFlush = setTimeout(() => {
         this.flush();
       }, this.flushDelay);
     }
+
+    // Force flush if batch size limit reached
+    if (this.pendingUpdates.size >= this.maxBatchSize) {
+      if (this.scheduledFlush) {
+        clearTimeout(this.scheduledFlush);
+        this.scheduledFlush = null;
+      }
+      this.flush();
+    }
   }
 
   /**
-   * Immediately flush all pending updates
+   * Process all pending updates
    */
   flush(): void {
     if (this.scheduledFlush) {
@@ -279,31 +286,23 @@ export class UpdateScheduler {
     }
 
     const startTime = performance.now();
+    const updates = Array.from(this.pendingUpdates.values())
+      .sort((a, b) => a.priority - b.priority || a.timestamp - b.timestamp);
 
-    // Sort updates by priority and timestamp
-    const updates = Array.from(this.pendingUpdates.values()).sort((a, b) => {
-      if (a.priority !== b.priority) {
-        return a.priority - b.priority; // Lower priority number = higher importance
-      }
-      return a.timestamp - b.timestamp; // Earlier timestamp first
-    });
-
-    // Process dependency-resolved updates
+    const processedUpdates: unknown[] = [];
     const processed = new Set<string>();
-    const processedUpdates: any[] = [];
 
     const processUpdate = (update: UpdateItem) => {
+      // Skip if already processed
       if (processed.has(update.id)) {
         return;
       }
 
-      // Check if dependencies are satisfied
+      // Check dependencies
       if (update.dependencies) {
-        const unmetDependencies = update.dependencies.filter(
-          dep => !processed.has(dep)
-        );
+        const unmetDependencies = update.dependencies.filter(dep => !processed.has(dep));
         if (unmetDependencies.length > 0) {
-          return; // Skip for now, will retry in next iteration
+          return; // Skip for now, will be processed in next iteration
         }
       }
 
@@ -403,14 +402,14 @@ export function adaptiveDebounce<T extends (...args: any[]) => any>(
   } = options;
 
   let currentWait = baseWait;
-  let performanceHistory: number[] = [];
+  const performanceHistory: number[] = [];
   const maxHistorySize = 10;
 
   const adaptiveFunc = function(this: any, ...args: Parameters<T>): ReturnType<T> {
     const startTime = performance.now();
     
     try {
-      const result = func.apply(this, args);
+      const result = func.apply(this, args) as ReturnType<T>;
       
       // Measure execution time
       const executionTime = performance.now() - startTime;
@@ -452,7 +451,7 @@ export function adaptiveDebounce<T extends (...args: any[]) => any>(
 
   const wrapper = (function(this: any, ...args: Parameters<T>): ReturnType<T> {
     recreateDebounced();
-    return debouncedFunc.apply(this, args);
+    return debouncedFunc.apply(this, args) as ReturnType<T>;
   }) as DebounceFunction<T>;
 
   wrapper.cancel = () => debouncedFunc.cancel();

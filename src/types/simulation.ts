@@ -48,9 +48,7 @@ export type SimulationParametersInput = z.infer<
   typeof simulationParametersSchema
 >;
 
-export interface SimulationParameters extends SimulationParametersInput {
-  // Additional computed or derived properties can go here
-}
+export type SimulationParameters = SimulationParametersInput;
 
 export interface SimulationState {
   generation: number;

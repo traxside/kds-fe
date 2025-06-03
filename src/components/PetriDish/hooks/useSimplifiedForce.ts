@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { GraphNode } from "../types";
 
 export function useSimplifiedForce() {
   // Simple, stable configuration - no dynamic changes!
@@ -15,7 +16,7 @@ export function useSimplifiedForce() {
       // NO manual d3Force configurations!
       
       // Simple node styling
-      nodeColor: (node: any) => {
+      nodeColor: (node: GraphNode) => {
         if (node.isResistant) return '#ff4444';
         return '#4444ff';
       },

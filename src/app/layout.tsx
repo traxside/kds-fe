@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SimulationProvider } from "@/context/SimulationContext";
-import StyleLoader from "@/components/StyleLoader";
+import React, { lazy, Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bacteria Simulation Dashboard",
+  title: "Bacteria Simulation Lab",
   description:
     "Interactive bacteria population dynamics and antibiotic resistance simulation",
 };
@@ -30,13 +30,17 @@ function StagewiseDevToolbar() {
 
   try {
     // Dynamic import to ensure it's only loaded in development
-    const { StagewiseToolbar } = require("@stagewise/toolbar-next");
+    const StagewiseToolbar = lazy(() => import("@stagewise/toolbar-next").then(module => ({ default: module.StagewiseToolbar })));
 
     const stagewiseConfig = {
       plugins: [],
     };
 
-    return <StagewiseToolbar config={stagewiseConfig} />;
+    return (
+      <Suspense fallback={null}>
+        <StagewiseToolbar config={stagewiseConfig} />
+      </Suspense>
+    );
   } catch (error) {
     // Gracefully handle toolbar loading errors
     console.warn("Stagewise toolbar failed to load:", error);
@@ -55,11 +59,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-surface text-white`}
         suppressHydrationWarning
       >
-        <StyleLoader>
-          <SimulationProvider autoRefresh={true} refreshInterval={1000}>
-            {children}
-          </SimulationProvider>
-        </StyleLoader>
+        <SimulationProvider autoRefresh={true} refreshInterval={1000}>
+          {children}
+        </SimulationProvider>
         <StagewiseDevToolbar />
       </body>
     </html>

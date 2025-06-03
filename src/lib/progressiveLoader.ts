@@ -1,7 +1,5 @@
 "use client";
 
-import { Simulation, Bacterium } from "@/types/simulation";
-
 // Progressive loading configuration
 export interface ProgressiveLoadingConfig {
   chunkSize: number;

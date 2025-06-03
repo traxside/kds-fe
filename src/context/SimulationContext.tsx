@@ -111,7 +111,7 @@ export const useSimulationStatus = () => {
 
 // Helper hook for bacteria data only (for visualization components)
 export const useBacteriaData = () => {
-  const { bacteria, simulation } = useSimulationContext();
+  const { bacteria } = useSimulationContext();
   
   return useMemo(() => {
     const resistantCount = bacteria.filter(b => b.isResistant).length;

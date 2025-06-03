@@ -16,13 +16,12 @@ import {
   LuInfo,
   LuUser,
   LuGlobe,
-  LuBookmark,
-  LuCalendar
+  LuBookmark
 } from "react-icons/lu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Simulation, SimulationMetadata } from "@/types/simulation";
+import { Simulation } from "@/types/simulation";
 
 interface SimulationMetadataCardProps {
   simulation: Simulation;
