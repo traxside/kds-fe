@@ -27,11 +27,76 @@ import Graph from "react-graph-vis";
 const nodeCuller = new CachedNodeCuller(); // This might need re-evaluation with react-graph-vis
 const performanceMonitor = new PerformanceMonitor();
 
+// Separate Tooltip Component
+interface TooltipProps {
+  bacterium: Bacterium;
+  x: number;
+  y: number;
+  containerWidth: number;
+  containerHeight: number;
+}
+
+const BacteriumTooltip: React.FC<TooltipProps> = ({ bacterium, x, y, containerWidth, containerHeight }) => {
+  const tooltipWidth = 220;
+  const tooltipHeight = 160;
+  
+  // Much closer positioning to mouse cursor
+  const left = Math.min(Math.max(5, x + 8), containerWidth - tooltipWidth - 5);
+  const top = Math.min(Math.max(5, y - 30), containerHeight - tooltipHeight - 5);
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: left,
+        top: top,
+        background: 'rgba(0, 0, 0, 0.95)',
+        color: 'white',
+        padding: '12px',
+        borderRadius: '8px',
+        fontSize: '12px',
+        zIndex: 1000,
+        pointerEvents: 'none',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        border: `2px solid ${bacterium.isResistant ? '#ff4444' : '#44ff44'}`,
+        minWidth: `${tooltipWidth}px`,
+        backdropFilter: 'blur(10px)',
+        fontFamily: 'monospace'
+      }}
+    >
+      <div style={{ 
+        fontWeight: 'bold', 
+        marginBottom: '8px', 
+        color: bacterium.isResistant ? '#ff6666' : '#66ff66',
+        borderBottom: '1px solid rgba(255,255,255,0.3)',
+        paddingBottom: '4px',
+        fontSize: '13px'
+      }}>
+        🦠 {bacterium.isResistant ? 'Resistant' : 'Sensitive'} Bacterium
+      </div>
+      <div style={{ lineHeight: '1.5', fontSize: '11px' }}>
+        <div><strong>ID:</strong> {bacterium.id}</div>
+        <div><strong>Age:</strong> {bacterium.age} gen</div>
+        <div><strong>Generation:</strong> {bacterium.generation}</div>
+        <div><strong>Resistant:</strong> {bacterium.isResistant ? '🔴 YES' : '🟢 NO'}</div>
+        <div><strong>Fitness:</strong> {bacterium.fitness?.toFixed(3) || 'N/A'}</div>
+        <div><strong>Size:</strong> {bacterium.size}px</div>
+        <div><strong>Pos:</strong> ({Math.round(bacterium.x)}, {Math.round(bacterium.y)})</div>
+        {bacterium.parentId ? (
+          <div><strong>Parent:</strong> {bacterium.parentId.substring(0, 8)}...</div>
+        ) : (
+          <div><strong>Origin:</strong> Initial pop</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const PetriDish = memo<PetriDishProps>(function PetriDish({
   bacteria,
-  width = 600,
-  height = 600,
-  // isSimulationRunning = false, // This prop might be used to control physics or updates
+  width,
+  height,
+  isSimulationRunning = false,
   onBacteriumClick,
   maxDisplayNodes = 1000,
   enableSpatialSampling = true,
@@ -49,7 +114,10 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   
   const [mounted, setMounted] = useState(false);
   // const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null); // Adapt hover logic
-  const [containerSize, setContainerSize] = useState({ width, height });
+  const [containerSize, setContainerSize] = useState({ 
+    width: width || 600, 
+    height: height || 600 
+  });
   // const [performanceMetrics, setPerformanceMetrics] = useState({ // Performance metrics will be different
   //   frameRate: 60,
   //   lastFrameTime: 0,
@@ -62,6 +130,10 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
     displayCount: number;
     cullingRatio: number;
   } | null>(null);
+
+  // Enhanced tooltip state
+  const [hoveredBacterium, setHoveredBacterium] = useState<Bacterium | null>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     setMounted(true);
@@ -77,31 +149,42 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   const updateSize = useCallback(() => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      // Fill the entire parent container for full canvas area
-      const parentElement = containerRef.current.parentElement;
-      if (parentElement) {
-        const parentRect = parentElement.getBoundingClientRect();
-        setContainerSize({
-          width: parentRect.width || width,
-          height: parentRect.height || height,
-        });
-      } else {
-        setContainerSize({
-          width: rect.width || width,
-          height: rect.height || height,
-        });
-      }
+      const newWidth = width || rect.width || 600;
+      const newHeight = height || rect.height || 600;
+      
+      // Only update if size actually changed to prevent unnecessary re-renders
+      setContainerSize(prev => {
+        if (Math.abs(prev.width - newWidth) > 10 || Math.abs(prev.height - newHeight) > 10) {
+          return { width: newWidth, height: newHeight };
+        }
+        return prev;
+      });
     }
   }, [width, height]);
 
   useEffect(() => {
     updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
+    // Remove resize listener to prevent constant updates
+    // The container should be stable now
   }, [updateSize]);
 
   const actualWidth = containerSize.width;
   const actualHeight = containerSize.height;
+
+  // Mouse tracking for tooltip positioning
+  const handleMouseMove = useCallback((event: React.MouseEvent) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setMousePosition({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      });
+    }
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setHoveredBacterium(null);
+  }, []);
 
   // Adapt graphData for react-graph-vis
   const graphDataForVis = React.useMemo(() => {
@@ -136,13 +219,21 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
     const nodes = displayBacteria.map(b => ({
       id: b.id,
       label: b.isResistant ? `R-${b.id.substring(0,3)}` : `S-${b.id.substring(0,3)}`, 
-      title: `ID: ${b.id}<br>Age: ${b.age}<br>Resistant: ${b.isResistant}<br>Fitness: ${b.fitness?.toFixed(2)}`,
-      color: b.color,
-      value: b.size, // For size scaling by value
-      // x: b.x, // Can be used for initial positions if physics allows
-      // y: b.y,
+      color: {
+        background: b.color,
+        border: b.isResistant ? '#8B0000' : '#2E8B57',
+        highlight: {
+          background: b.isResistant ? '#FF6B6B' : '#98FB98',
+          border: b.isResistant ? '#FF0000' : '#00FF00'
+        }
+      },
+      value: Math.max(b.size * 2, 8), // Ensure minimum visible size
       shape: b.isResistant ? 'star' : 'dot',
       originalData: b, 
+      font: {
+        size: 8,
+        color: b.isResistant ? '#FFFFFF' : '#000000'
+      }
     }));
 
     // Adapt createValidatedLinks for react-graph-vis
@@ -182,12 +273,19 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   // const configureForces = useCallback(() => { ... });
   // useEffect(() => { /* configureForces logic */ }, [configureForces]);
 
+  // Define a completely stable key that doesn't change with container size
+  const stableKey = React.useMemo(() => {
+    return `graph-${graphDataForVis.nodes.length}`;
+  }, [graphDataForVis.nodes.length]);
+
   // Define options for react-graph-vis
   const options: any = { // eslint-disable-line @typescript-eslint/no-explicit-any
-    autoResize: true,
+    autoResize: false, // Disable autoResize completely
+    width: '100%',
+    height: '100%',
     nodes: {
-      borderWidth: 1,
-      borderWidthSelected: 2,
+      borderWidth: 2,
+      borderWidthSelected: 3,
       font: {
         size: 10,
         face: "Tahoma",
@@ -196,49 +294,71 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       shapeProperties: {
         useImageSize: false,
       },
+      scaling: {
+        min: 8,
+        max: 30,
+      },
+      shadow: {
+        enabled: true,
+        color: 'rgba(0,0,0,0.3)',
+        size: 5,
+        x: 2,
+        y: 2
+      }
     },
     edges: {
       color: "#cccccc",
-      width: 0.5,
+      width: 1,
       smooth: {
         enabled: true,
         type: "continuous",
         roundness: 0.5,
       },
       arrows: {
-        to: { enabled: true, scaleFactor: 0.4, type: 'arrow' }
+        to: { enabled: true, scaleFactor: 0.6, type: 'arrow' }
+      },
+      shadow: {
+        enabled: true,
+        color: 'rgba(0,0,0,0.2)',
+        size: 3,
+        x: 1,
+        y: 1
       }
     },
     physics: {
       enabled: true,
       barnesHut: {
-        gravitationalConstant: -1500,
-        centralGravity: 0.05,
-        springLength: 80,
-        springConstant: 0.02,
+        gravitationalConstant: -2000,
+        centralGravity: 0.1,
+        springLength: 100,
+        springConstant: 0.04,
         damping: 0.09,
-        avoidOverlap: 0.2
+        avoidOverlap: 0.3
       },
       solver: 'barnesHut',
       stabilization: {
         enabled: true,
-        iterations: 200, // Lower for faster initial display
-        fit: true,
+        iterations: 100, // Reduce iterations to prevent excessive layout
+        fit: false, // Disable auto-fitting which can cause size changes
       },
       timestep: 0.5,
     },
     interaction: {
       hover: true,
-      tooltipDelay: 150,
-      navigationButtons: false, // Set to true to show navigation buttons
+      hideEdgesOnDrag: false,
+      hideNodesOnDrag: false,
+      navigationButtons: false,
       zoomView: true,
       dragView: true,
       dragNodes: true,
+      multiselect: false,
+      selectConnectedEdges: false,
+      hoverConnectedEdges: true,
     },
-    // layout: {
-    //   randomSeed: undefined, // Let vis.js handle random seed
-    //   improvedLayout:true,
-    // },
+    layout: {
+      improvedLayout: true,
+      randomSeed: 42, // Consistent layout
+    }
   };
 
   // Define events for react-graph-vis
@@ -252,15 +372,19 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
         }
       }
     },
-    hoverNode: (/* { node }: { node: string } */) => {
-      // console.log('Hovered node ID:', node); // Example usage
+    hoverNode: (event: { node: string }) => {
+      const nodeData = graphDataForVis.nodes.find(n => n.id === event.node);
+      if (nodeData && nodeData.originalData) {
+        setHoveredBacterium(nodeData.originalData);
+      }
     },
     blurNode: () => {
-      // setHoveredNode(null);
+      setHoveredBacterium(null);
     },
-    // zoom: (params: any) => {
-    //   // Handle zoom for performance metrics if needed
-    // }
+    oncontext: (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      // Prevent context menu to avoid interference with tooltips
+      event.event.preventDefault();
+    }
   };
   
   // The useForceConfiguration hook is no longer needed with react-graph-vis
@@ -287,64 +411,111 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
     <div 
       ref={containerRef} 
       style={{
-        width: '100%', // Fill entire parent container
-        height: '100%', // Fill entire parent container
-        position: 'relative'
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        overflow: 'hidden', // Force overflow hidden on container
+        maxWidth: '100%',
+        maxHeight: '100%'
       }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Circular border overlay - visual guide only */}
+      {/* Circular border overlay - fixed position to prevent movement */}
       <div
         style={{
           position: 'absolute',
           top: '50%',
           left: '50%',
-          width: Math.min(actualWidth, actualHeight) * 0.9 + 'px', // Make it larger (90% of container)
-          height: Math.min(actualWidth, actualHeight) * 0.9 + 'px', // Make it larger (90% of container)
+          width: '90%',
+          height: '90%',
+          aspectRatio: '1',
+          maxWidth: `${Math.min(actualWidth, actualHeight) * 0.9}px`,
+          maxHeight: `${Math.min(actualWidth, actualHeight) * 0.9}px`,
           transform: 'translate(-50%, -50%)',
           borderRadius: '50%',
-          border: '3px solid rgba(128, 128, 128, 0.4)', // Semi-transparent grey border
-          backgroundColor: 'rgba(128, 128, 128, 0.05)', // Very light grey background
-          pointerEvents: 'none', // Don't interfere with interactions
+          border: '3px solid rgba(128, 128, 128, 0.4)',
+          backgroundColor: 'rgba(128, 128, 128, 0.05)',
+          pointerEvents: 'none',
           zIndex: 10
         }}
       />
       
       {cullingStats && (
-        <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.7)', color: 'white', padding: '4px 8px', fontSize: '12px', borderRadius: '4px', zIndex: 10 }}>
-          <div>Original Nodes: {cullingStats.originalCount}</div>
-          <div>Displaying: {cullingStats.displayCount} ({(cullingStats.cullingRatio * 100).toFixed(1)}% culled)</div>
+        <div style={{ 
+          position: 'absolute', 
+          top: 10, 
+          left: 10, 
+          background: 'rgba(0,0,0,0.8)', 
+          color: 'white', 
+          padding: '6px 10px', 
+          fontSize: '11px', 
+          borderRadius: '6px', 
+          zIndex: 15, 
+          pointerEvents: 'none',
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div><strong>Nodes:</strong> {cullingStats.displayCount} / {cullingStats.originalCount}</div>
+          <div><strong>Culled:</strong> {(cullingStats.cullingRatio * 100).toFixed(1)}%</div>
         </div>
       )}
-      <Graph
-        key={graphDataForVis.nodes.map(n=>n.id).join('-') + graphDataForVis.edges.map(e=>e.from+e.to).join('-')} // More robust key
-        graph={graphDataForVis}
-        options={options as any} // eslint-disable-line @typescript-eslint/no-explicit-any
-        events={events}
-        getNetwork={(networkInstance: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-          networkRef.current = networkInstance;
+      
+      {/* Hover instruction overlay */}
+      <div style={{ 
+        position: 'absolute', 
+        bottom: 10, 
+        right: 10, 
+        background: 'rgba(0,0,0,0.7)', 
+        color: 'white', 
+        padding: '6px 10px', 
+        fontSize: '11px', 
+        borderRadius: '6px', 
+        zIndex: 15, 
+        pointerEvents: 'none',
+        backdropFilter: 'blur(4px)'
+      }}>
+        <div><strong>💡 Hover over bacteria for details</strong></div>
+        <div>🖱️ Click to select • 🔍 Scroll to zoom</div>
+      </div>
+      
+      {/* Custom Tooltip Component */}
+      {hoveredBacterium && (
+        <BacteriumTooltip
+          bacterium={hoveredBacterium}
+          x={mousePosition.x}
+          y={mousePosition.y}
+          containerWidth={actualWidth}
+          containerHeight={actualHeight}
+        />
+      )}
+      
+      {/* Graph component wrapper - simplified */}
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          position: 'absolute', // Keep it positioned within the main container
+          top: 0,
+          left: 0,
+          // overflow: 'hidden' // Removed, rely on parent's overflow
         }}
-        style={{ 
-          width: '100%', 
-          height: '100%'
-        }}
-      />
-      {/* Tooltip example (if needed beyond default titles) */}
-      {/* {hoveredNode && (
-        <div
-          style={{
-            position: "absolute",
-            left: hoveredNode.x ? hoveredNode.x + 10 : undefined, // Adjust positioning
-            top: hoveredNode.y ? hoveredNode.y + 10 : undefined,
-            background: "white",
-            border: "1px solid black",
-            padding: "5px",
-            zIndex: 100,
+      >
+        <Graph
+          key={stableKey}
+          graph={graphDataForVis}
+          options={options as any} // eslint-disable-line @typescript-eslint/no-explicit-any
+          events={events}
+          getNetwork={(networkInstance: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+            networkRef.current = networkInstance;
           }}
-        >
-          ID: {hoveredNode.id} <br />
-          Age: {(hoveredNode as any).originalData?.age}
-        </div>
-      )} */}
+          style={{ 
+            width: '100%', 
+            height: '100%',
+            // overflow: 'hidden', // Removed
+            // position: 'absolute' // Removed, Graph should fill its direct parent
+          }}
+        />
+      </div>
     </div>
   );
 });
