@@ -420,7 +420,7 @@ export default function Dashboard() {
             {/* Petri Dish Visualization */}
             <div className="lg:col-span-2">
               <Card
-                className="h-full border"
+                className="h-full border overflow-hidden"
                 style={{
                   backgroundColor: `${colors.surface.a10}cc`,
                   backdropFilter: "blur(12px)",
@@ -571,9 +571,9 @@ export default function Dashboard() {
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="h-[calc(100%-5rem)]">
+                <CardContent className="h-[calc(100%-5rem)] overflow-hidden">
                   <div
-                    className="relative w-full h-full rounded-xl border flex items-center justify-center"
+                    className="relative w-full h-full rounded-xl border"
                     style={{
                       backgroundColor: colors.surfaceTonal.a0,
                       borderColor: colors.surfaceTonal.a20,
@@ -607,8 +607,6 @@ export default function Dashboard() {
 
                     <PetriDish
                       bacteria={displayBacteria}
-                      width={600}
-                      height={600}
                       isSimulationRunning={isSimulationRunning}
                       maxDisplayNodes={1000}
                       enableSpatialSampling={true}
