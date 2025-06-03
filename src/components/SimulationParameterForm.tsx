@@ -192,8 +192,8 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
                   onSubmit={form.handleSubmit(handleSubmit)}
                   className="space-y-4"
               >
-                {/* Two Column Layout */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* One Column Layout */}
+                <div className="space-y-4">
                   {/* Left Column */}
                   <div className="space-y-4">
                     {/* Initial Population */}
