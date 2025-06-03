@@ -56,6 +56,9 @@ const generateMockStatistics = (): SimulationStatistics => {
     ),
     averageFitness: generations.map(() => 0.3 + Math.random() * 0.5),
     mutationEvents: generations.map(() => Math.floor(Math.random() * 8)),
+    antibioticDeaths: generations.map(() => Math.floor(Math.random() * 5)),
+    naturalDeaths: generations.map(() => Math.floor(Math.random() * 3)),
+    reproductions: generations.map(() => Math.floor(Math.random() * 12 + 8)),
   };
 };
 

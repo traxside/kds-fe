@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/* CSS Loading Indicator */
+html:not(.css-loaded) {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+}
+
+html:not(.css-loaded) body::before {
+  content: "Loading styles...";
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffffff;
+  font-family: system-ui, sans-serif;
+  z-index: 9999;
+}
+
 :root {
   /** Base colors */
   --clr-dark-a0: #000000;
@@ -30,16 +47,24 @@
   --clr-surface-tonal-a50: #909795;
 }
 
-/* Force dark theme globally */
+/* Force dark theme globally with better loading fallbacks */
 html {
-  background-color: var(--clr-surface-a0) !important;
-  color: var(--clr-light-a0) !important;
+  background-color: var(--clr-surface-a0, #121212) !important;
+  color: var(--clr-light-a0, #ffffff) !important;
 }
 
 body {
-  background-color: var(--clr-surface-a0) !important;
-  color: var(--clr-light-a0) !important;
-  font-family: var(--font-geist-sans), system-ui, sans-serif !important;
+  background-color: var(--clr-surface-a0, #121212) !important;
+  color: var(--clr-light-a0, #ffffff) !important;
+  font-family: var(--font-geist-sans, system-ui, sans-serif) !important;
+  /* Prevent flash of unstyled content */
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Show body once CSS is loaded */
+html.css-loaded body {
+  opacity: 1;
 }
 
 /* Custom theme classes */
@@ -198,24 +223,15 @@ body {
   font-weight: 600 !important;
 }
 
-.statistics-panel [role="tablist"] [role="tab"][data-state="inactive"] {
-  background-color: transparent !important;
-  color: var(--clr-surface-a50) !important;
-  border: 1px solid transparent !important;
-}
-
 .statistics-panel [role="tablist"] [role="tab"][data-state="inactive"]:hover {
   background-color: var(--clr-surface-a20) !important;
   color: var(--clr-primary-a20) !important;
-  border-color: var(--clr-surface-a30) !important;
-  transform: translateY(-0.5px);
+  border: 1px solid var(--clr-surface-a30) !important;
+  transform: none;
+  font-weight: 400 !important;
 }
 
-/* Tab container styling for StatisticsPanel */
 .statistics-panel [role="tablist"] {
   background-color: var(--clr-surface-a10) !important;
   border: 1px solid var(--clr-surface-a20) !important;
-  padding: 4px !important;
-  border-radius: 8px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }

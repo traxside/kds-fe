@@ -21,17 +21,26 @@ import {
   LuTriangleAlert,
   LuX,
   LuFlaskConical,
+  LuEye,
+  LuList,
+  LuSave,
+  LuFolderOpen,
 } from "react-icons/lu";
-import PetriDish from "@/components/PetriDish";
+import PetriDish from "@/components/PetriDish/PetriDishRefactored";
 import SimulationParameterForm from "@/components/SimulationParameterForm";
 import StatisticsPanel from "@/components/StatisticsPanel";
 import SimulationControls from "@/components/SimulationControls";
+import VirtualizedBacteriaList from "@/components/VirtualizedBacteriaList";
+import SaveSimulationModal from "@/components/SaveSimulationModal";
+import LoadSimulationModal from "@/components/LoadSimulationModal";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ConnectionStatus, {
   ConnectionStatusCompact,
 } from "@/components/ConnectionStatus";
 import { useSimulationContext } from "@/context/SimulationContext";
-import { Bacterium, SimulationParametersInput } from "@/types/simulation";
+import { Bacterium, SimulationParametersInput, Simulation } from "@/types/simulation";
+import { simulationApiSimple } from "@/lib/api";
+import Link from "next/link";
 
 // Move colors outside component to prevent recreation on every render
 const colors = {
@@ -111,6 +120,7 @@ export default function Dashboard() {
     resetSimulation,
     clearError,
     checkConnection,
+    loadSimulation,
   } = useSimulationContext();
 
   // Local state for UI
@@ -119,11 +129,31 @@ export default function Dashboard() {
   );
   const [showConnectionDetails, setShowConnectionDetails] = useState(false);
   const [sampleBacteria, setSampleBacteria] = useState<Bacterium[]>([]);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showLoadModal, setShowLoadModal] = useState(false);
+  const [savedSimulations, setSavedSimulations] = useState<Simulation[]>([]);
+  const [savingSimulation, setSavingSimulation] = useState(false);
 
   // Initialize sample data on mount
   useEffect(() => {
     setSampleBacteria(generateSampleBacteria());
   }, []);
+
+  // Load saved simulations when load modal opens
+  useEffect(() => {
+    if (showLoadModal) {
+      const loadSimulations = async () => {
+        try {
+          const simulations = await simulationApiSimple.getSimulations();
+          setSavedSimulations(simulations);
+        } catch (err) {
+          console.error("Failed to load simulations:", err);
+          setSavedSimulations([]);
+        }
+      };
+      loadSimulations();
+    }
+  }, [showLoadModal]);
 
   // Memoized event handlers
   const handleSimulationSubmit = useCallback(
@@ -172,10 +202,84 @@ export default function Dashboard() {
     setShowConnectionDetails(prev => !prev);
   }, []);
 
+  const handleOpenSaveModal = useCallback(() => {
+    setShowSaveModal(true);
+  }, []);
+
+  const handleCloseSaveModal = useCallback(() => {
+    setShowSaveModal(false);
+  }, []);
+
+  const handleOpenLoadModal = useCallback(() => {
+    setShowLoadModal(true);
+  }, []);
+
+  const handleCloseLoadModal = useCallback(() => {
+    setShowLoadModal(false);
+  }, []);
+
+  const handleSaveSimulation = useCallback(async (name: string, description?: string) => {
+    if (!simulation) return;
+    
+    setSavingSimulation(true);
+    try {
+      await simulationApiSimple.saveSimulationSnapshot(
+        simulation.id,
+        name,
+        description
+      );
+      console.log("Simulation saved successfully");
+      setShowSaveModal(false);
+    } catch (err) {
+      console.error("Failed to save simulation:", err);
+      throw err; // Re-throw to let modal handle the error
+    } finally {
+      setSavingSimulation(false);
+    }
+  }, [simulation]);
+
+  const handleLoadSimulation = useCallback(async (selectedSimulation: Simulation) => {
+    try {
+      await loadSimulation(selectedSimulation.id);
+      setShowLoadModal(false);
+    } catch (err) {
+      console.error("Failed to load simulation:", err);
+      throw err; // Re-throw to let modal handle the error
+    }
+  }, [loadSimulation]);
+
   // Memoized computed values
   const displayBacteria = useMemo(() => {
     return bacteria.length > 0 ? bacteria : sampleBacteria;
   }, [bacteria, sampleBacteria]);
+
+  // Use simulation statistics from backend when available, otherwise calculate from bacteria
+  const currentStats = useMemo(() => {
+    if (simulation?.statistics && simulation.statistics.totalPopulation.length > 0) {
+      // Use latest statistics from backend simulation
+      const lastIndex = simulation.statistics.totalPopulation.length - 1;
+      return {
+        totalCount: simulation.statistics.totalPopulation[lastIndex] || 0,
+        resistantCount: simulation.statistics.resistantCount[lastIndex] || 0,
+        sensitiveCount: simulation.statistics.sensitiveCount[lastIndex] || 0,
+        resistancePercentage: simulation.statistics.totalPopulation[lastIndex] > 0 
+          ? (simulation.statistics.resistantCount[lastIndex] / simulation.statistics.totalPopulation[lastIndex]) * 100 
+          : 0,
+        isLiveData: true
+      };
+    } else {
+      // Fallback to frontend calculation for sample data
+      const resistantCount = displayBacteria.filter((b) => b.isResistant).length;
+      const totalCount = displayBacteria.length;
+      return {
+        totalCount,
+        resistantCount,
+        sensitiveCount: totalCount - resistantCount,
+        resistancePercentage: totalCount > 0 ? (resistantCount / totalCount) * 100 : 0,
+        isLiveData: false
+      };
+    }
+  }, [simulation, displayBacteria]);
 
   const resistancePercentage = useMemo(() => {
     return displayBacteria.length > 0
@@ -235,6 +339,36 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex items-center space-x-3">
+                <Link href="/virtualization-demo">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    style={{
+                      backgroundColor: `${colors.surface.a20}80`,
+                      borderColor: colors.surface.a30,
+                      color: colors.primary.a20,
+                    }}
+                  >
+                    <LuEye className="h-3 w-3 mr-1" />
+                    Virtualization Demo
+                  </Button>
+                </Link>
+                <Link href="/comparison">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    style={{
+                      backgroundColor: `${colors.surface.a20}80`,
+                      borderColor: colors.surface.a30,
+                      color: colors.primary.a20,
+                    }}
+                  >
+                    <LuList className="h-3 w-3 mr-1" />
+                    Compare Simulations
+                  </Button>
+                </Link>
                 <Badge
                   variant="outline"
                   className="text-xs"
@@ -355,6 +489,55 @@ export default function Dashboard() {
                       )}
                     </div>
                     <div className="flex space-x-2">
+                      {/* Save Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleOpenSaveModal}
+                        disabled={isLoading || !simulation || !isConnected}
+                        style={{
+                          backgroundColor: `${colors.surface.a20}80`,
+                          borderColor: colors.surface.a20,
+                          color: colors.surface.a50,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = colors.surface.a20;
+                          e.currentTarget.style.color = colors.light;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = `${colors.surface.a20}80`;
+                          e.currentTarget.style.color = colors.surface.a50;
+                        }}
+                      >
+                        <LuSave className="h-4 w-4 mr-1" />
+                        Save
+                      </Button>
+
+                      {/* Load Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleOpenLoadModal}
+                        disabled={isLoading || !isConnected}
+                        style={{
+                          backgroundColor: `${colors.surface.a20}80`,
+                          borderColor: colors.surface.a20,
+                          color: colors.surface.a50,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = colors.surface.a20;
+                          e.currentTarget.style.color = colors.light;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = `${colors.surface.a20}80`;
+                          e.currentTarget.style.color = colors.surface.a50;
+                        }}
+                      >
+                        <LuFolderOpen className="h-4 w-4 mr-1" />
+                        Load
+                      </Button>
+
+                      {/* Play/Pause Button */}
                       <Button
                         variant={
                           isSimulationRunning ? "destructive" : "default"
@@ -458,6 +641,8 @@ export default function Dashboard() {
                       isSimulationRunning={isSimulationRunning}
                       maxDisplayNodes={1000}
                       enableSpatialSampling={true}
+                      enableAdaptivePerformance={true}
+                      onToggleSimulation={handlePlayPause}
                       onBacteriumClick={(bacterium) => {
                         console.log("Clicked bacterium:", bacterium);
                       }}
@@ -515,13 +700,13 @@ export default function Dashboard() {
                           className="text-2xl font-semibold"
                           style={{ color: colors.primary.a0 }}
                         >
-                          {displayBacteria.length}
+                          {currentStats.totalCount}
                         </div>
                         <div
                           className="text-xs"
                           style={{ color: colors.primary.a20 }}
                         >
-                          Total
+                          Total {currentStats.isLiveData && <span className="text-green-400">●</span>}
                         </div>
                       </div>
                       <div
@@ -535,10 +720,10 @@ export default function Dashboard() {
                           className="text-2xl font-semibold"
                           style={{ color: "#f87171" }}
                         >
-                          {displayBacteria.filter((b) => b.isResistant).length}
+                          {currentStats.resistantCount}
                         </div>
                         <div className="text-xs" style={{ color: "#fca5a5" }}>
-                          Resistant
+                          Resistant {currentStats.isLiveData && <span className="text-green-400">●</span>}
                         </div>
                       </div>
                     </div>
@@ -563,7 +748,7 @@ export default function Dashboard() {
                             color: colors.primary.a20,
                           }}
                         >
-                          {displayBacteria.filter((b) => !b.isResistant).length}
+                          {currentStats.sensitiveCount}
                         </Badge>
                       </div>
 
@@ -573,7 +758,7 @@ export default function Dashboard() {
                           style={{ color: colors.surface.a40 }}
                         >
                           <span>Resistance Rate</span>
-                          <span>{resistancePercentage.toFixed(1)}%</span>
+                          <span>{currentStats.resistancePercentage.toFixed(1)}%</span>
                         </div>
                         <div
                           className="w-full rounded-full h-2 overflow-hidden"
@@ -582,7 +767,7 @@ export default function Dashboard() {
                           <div
                             className="h-2 rounded-full transition-all duration-500 ease-out"
                             style={{
-                              width: `${resistancePercentage}%`,
+                              width: `${currentStats.resistancePercentage}%`,
                               background: `linear-gradient(135deg, ${colors.primary.a0}, ${colors.primary.a20})`,
                               boxShadow: `0 0 10px ${colors.primary.a0}30`,
                             }}
@@ -628,7 +813,7 @@ export default function Dashboard() {
                   <CardContent className="h-[calc(100%-5rem)]">
                     <Tabs defaultValue="parameters" className="h-full">
                       <TabsList
-                        className="grid w-full grid-cols-2 border"
+                        className="grid w-full grid-cols-3 border"
                         style={{
                           backgroundColor: colors.surface.a10,
                           borderColor: colors.surface.a20,
@@ -652,6 +837,16 @@ export default function Dashboard() {
                         >
                           <LuChartBar className="h-4 w-4 mr-1" />
                           Charts
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="data"
+                          className="text-sm data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=inactive]:text-gray-400 hover:text-white/80 transition-colors"
+                          style={{
+                            color: colors.surface.a50,
+                          }}
+                        >
+                          <LuList className="h-4 w-4 mr-1" />
+                          Data
                         </TabsTrigger>
                       </TabsList>
 
@@ -699,6 +894,13 @@ export default function Dashboard() {
                           isLoading={isLoading}
                         />
                       </TabsContent>
+
+                      <TabsContent value="data" className="mt-4">
+                        <VirtualizedBacteriaList
+                          bacteria={displayBacteria}
+                          height={350}
+                        />
+                      </TabsContent>
                     </Tabs>
                   </CardContent>
                 </Card>
@@ -706,6 +908,27 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Save Simulation Modal */}
+        <SaveSimulationModal
+          isOpen={showSaveModal}
+          onClose={handleCloseSaveModal}
+          onSave={handleSaveSimulation}
+          currentSimulation={simulation || undefined}
+          existingSimulations={savedSimulations}
+          defaultName={simulation?.name ? `${simulation.name} Copy` : `Simulation ${new Date().toLocaleString()}`}
+          loading={savingSimulation}
+        />
+
+        {/* Load Simulation Modal */}
+        <LoadSimulationModal
+          isOpen={showLoadModal}
+          onClose={handleCloseLoadModal}
+          onLoad={handleLoadSimulation}
+          simulations={savedSimulations}
+          loading={false}
+          currentSimulation={simulation || undefined}
+        />
       </div>
     </ErrorBoundary>
   );

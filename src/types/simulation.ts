@@ -57,6 +57,8 @@ export interface SimulationState {
   timeElapsed: number;
   bacteria: Bacterium[];
   isRunning: boolean;
+  isPaused: boolean;
+  stepCount: number;
 }
 
 export interface SimulationStatistics {
@@ -66,16 +68,129 @@ export interface SimulationStatistics {
   averageFitness: number[];
   mutationEvents: number[];
   generations: number[];
+  antibioticDeaths: number[];
+  naturalDeaths: number[];
+  reproductions: number[];
 }
 
+// Extended metadata interfaces for comprehensive simulation tracking
+export interface SimulationPerformanceMetrics {
+  averageGenerationTime: number; // milliseconds per generation
+  totalExecutionTime: number; // total runtime in milliseconds
+  memoryUsage?: number; // peak memory usage in MB
+  cpuUtilization?: number; // average CPU usage percentage
+  renderFrameRate?: number; // average FPS during visualization
+  maxPopulationReached: number;
+  extinctionEvents: number;
+  resistanceEmergenceGeneration?: number; // first generation with resistance
+}
+
+export interface SimulationComplexityMetrics {
+  parameterComplexity: number; // 1-10 scale based on parameter combinations
+  populationVolatility: number; // measure of population fluctuation
+  resistanceStability: number; // measure of resistance ratio stability
+  evolutionaryPressure: number; // combined effect of selection pressures
+  computationalComplexity: number; // estimated computational requirements
+}
+
+export interface SimulationMetadata {
+  // User-editable fields
+  tags: string[]; // User-defined tags for categorization
+  category: string; // Primary category (e.g., "research", "education", "demo")
+  notes: string; // User notes and observations
+  rating?: number; // User rating 1-5 stars
+  favorite: boolean; // User favorited status
+  
+  // Automatically generated fields
+  version: string; // Simulation engine version used
+  performanceMetrics: SimulationPerformanceMetrics;
+  complexityMetrics: SimulationComplexityMetrics;
+  
+  // Research and analysis fields
+  hypothesis?: string; // Research hypothesis being tested
+  methodology?: string; // Experimental methodology
+  conclusions?: string; // Research conclusions
+  
+  // Collaboration fields
+  sharedWith?: string[]; // User IDs simulation is shared with
+  isPublic: boolean; // Whether simulation is publicly viewable
+  
+  // Technical metadata
+  browserInfo?: string; // Browser and version used
+  deviceInfo?: string; // Device type and capabilities
+  exportHistory: ExportRecord[]; // History of exports
+}
+
+export interface ExportRecord {
+  exportedAt: string;
+  format: "json" | "csv";
+  options: string; // JSON stringified export options
+  fileSize: number; // Size in bytes
+}
+
+// Comprehensive simulation interface with metadata
 export interface Simulation {
   id: string;
   name: string;
+  description?: string;
   parameters: SimulationParameters;
   currentState: SimulationState;
   statistics: SimulationStatistics;
   createdAt: string;
   updatedAt: string;
+  completedAt?: string;
+  userId?: string;
+  
+  // Extended metadata
+  metadata?: SimulationMetadata;
+}
+
+// Search and filter interfaces
+export interface SimulationSearchFilters {
+  // Text search
+  searchQuery?: string;
+  
+  // Status filters
+  status?: "all" | "running" | "paused" | "completed";
+  
+  // Date range filters
+  createdAfter?: string;
+  createdBefore?: string;
+  
+  // Parameter range filters
+  populationRange?: { min: number; max: number };
+  growthRateRange?: { min: number; max: number };
+  antibioticConcentrationRange?: { min: number; max: number };
+  mutationRateRange?: { min: number; max: number };
+  
+  // Metadata filters
+  tags?: string[];
+  category?: string;
+  rating?: number;
+  favoritesOnly?: boolean;
+  isPublic?: boolean;
+  
+  // Complexity filters
+  complexityRange?: { min: number; max: number };
+  
+  // Sorting options
+  sortBy?: "date" | "name" | "rating" | "complexity" | "performance";
+  sortOrder?: "asc" | "desc";
+  
+  // Pagination
+  page?: number;
+  limit?: number;
+}
+
+export interface SimulationSearchResult {
+  simulations: Simulation[];
+  totalCount: number;
+  filters: SimulationSearchFilters;
+  facets?: {
+    categories: { [category: string]: number };
+    tags: { [tag: string]: number };
+    complexityDistribution: { [range: string]: number };
+  };
 }
 
 // Preset configurations for common scenarios
@@ -113,3 +228,41 @@ export const simulationPresets = {
     petriDishSize: 600,
   },
 } as const;
+
+// Utility functions for metadata management
+export const createDefaultMetadata = (): SimulationMetadata => ({
+  tags: [],
+  category: "general",
+  notes: "",
+  favorite: false,
+  version: "1.0.0",
+  performanceMetrics: {
+    averageGenerationTime: 0,
+    totalExecutionTime: 0,
+    maxPopulationReached: 0,
+    extinctionEvents: 0,
+  },
+  complexityMetrics: {
+    parameterComplexity: 1,
+    populationVolatility: 0,
+    resistanceStability: 0,
+    evolutionaryPressure: 0,
+    computationalComplexity: 1,
+  },
+  isPublic: false,
+  exportHistory: [],
+});
+
+// Common simulation categories
+export const simulationCategories = [
+  "general",
+  "research",
+  "education",
+  "demonstration",
+  "experiment",
+  "comparison",
+  "optimization",
+  "validation",
+] as const;
+
+export type SimulationCategory = typeof simulationCategories[number];

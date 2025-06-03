@@ -301,16 +301,35 @@ export const simulationApi = {
     if (signal) {
       (axiosConfig as any).signal = signal;
     }
+    return retryRequest(() => api.get<any>("/health", axiosConfig));
+  },
+
+  // Save simulation snapshot (clone current state with new name)
+  saveSimulationSnapshot: (
+    sourceId: string,
+    data: { name: string; description?: string },
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
     return retryRequest(() =>
-      api.get<{
-        status: string;
-        message: string;
-        timestamp: string;
-        database: {
-          connected: boolean;
-          state: string;
-        };
-      }>("/health", axiosConfig)
+      api.post<Simulation>(`/simulations/${sourceId}/snapshot`, data, axiosConfig)
+    );
+  },
+
+  // Load simulation (duplicate functionality for clarity)
+  loadSimulation: (
+    id: string,
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as any).signal = signal;
+    }
+    return retryRequest(() =>
+      api.get<Simulation>(`/simulations/${id}`, axiosConfig)
     );
   },
 };
@@ -390,6 +409,27 @@ export const simulationApiSimple = {
     const response = await simulationApi.healthCheck({ signal });
     return response.data;
   },
+
+  // Save simulation snapshot (clone with new name)
+  async saveSimulationSnapshot(
+    sourceId: string,
+    name: string,
+    description?: string,
+    signal?: AbortSignal
+  ): Promise<Simulation> {
+    const response = await simulationApi.saveSimulationSnapshot(
+      sourceId,
+      { name, description },
+      { signal }
+    );
+    return response.data;
+  },
+
+  // Load simulation (alias for getSimulation for semantic clarity)
+  async loadSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
+    const response = await simulationApi.loadSimulation(id, { signal });
+    return response.data;
+  },
 };
 
 // Mock API service for development and testing
@@ -412,6 +452,8 @@ export const mockSimulationApi = {
         timeElapsed: 0,
         bacteria: [],
         isRunning: false,
+        isPaused: false,
+        stepCount: 0,
       },
       statistics: {
         totalPopulation: [100],
@@ -420,6 +462,9 @@ export const mockSimulationApi = {
         averageFitness: [0.75],
         mutationEvents: [0],
         generations: [0],
+        antibioticDeaths: [0],
+        naturalDeaths: [0],
+        reproductions: [0],
       },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -443,6 +488,8 @@ export const mockSimulationApi = {
         timeElapsed: 0,
         bacteria: [],
         isRunning: false,
+        isPaused: false,
+        stepCount: 0,
       },
       statistics: {
         totalPopulation: [parameters.initialPopulation],
@@ -451,6 +498,9 @@ export const mockSimulationApi = {
         averageFitness: [0.75],
         mutationEvents: [0],
         generations: [0],
+        antibioticDeaths: [0],
+        naturalDeaths: [0],
+        reproductions: [0],
       },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -494,6 +544,40 @@ export const mockSimulationApi = {
         state: "ready",
       },
     };
+  },
+
+  // Save simulation snapshot (clone with new name)
+  async saveSimulationSnapshot(
+    sourceId: string,
+    name: string,
+    description?: string,
+    signal?: AbortSignal
+  ): Promise<Simulation> {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    
+    const sourceSimulation = this.mockSimulations.find((s) => s.id === sourceId);
+    if (!sourceSimulation) {
+      throw new ApiError(404, `Source simulation with id ${sourceId} not found`);
+    }
+
+    // Create a deep copy of the source simulation with new name and ID
+    const newSimulation: Simulation = {
+      ...JSON.parse(JSON.stringify(sourceSimulation)), // Deep copy
+      id: `mock-snapshot-${Date.now()}`,
+      name,
+      description,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      completedAt: undefined, // Reset completion status
+    };
+
+    this.mockSimulations.push(newSimulation);
+    return newSimulation;
+  },
+
+  // Load simulation (alias for getSimulation)
+  async loadSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
+    return this.getSimulation(id, signal);
   },
 };
 

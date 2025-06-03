@@ -2,15 +2,18 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SimulationProvider } from "@/context/SimulationContext";
+import StyleLoader from "@/components/StyleLoader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -25,14 +28,20 @@ function StagewiseDevToolbar() {
     return null;
   }
 
-  // Dynamic import to ensure it's only loaded in development
-  const { StagewiseToolbar } = require("@stagewise/toolbar-next");
+  try {
+    // Dynamic import to ensure it's only loaded in development
+    const { StagewiseToolbar } = require("@stagewise/toolbar-next");
 
-  const stagewiseConfig = {
-    plugins: [],
-  };
+    const stagewiseConfig = {
+      plugins: [],
+    };
 
-  return <StagewiseToolbar config={stagewiseConfig} />;
+    return <StagewiseToolbar config={stagewiseConfig} />;
+  } catch (error) {
+    // Gracefully handle toolbar loading errors
+    console.warn("Stagewise toolbar failed to load:", error);
+    return null;
+  }
 }
 
 export default function RootLayout({
@@ -41,13 +50,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-surface text-white`}
+        suppressHydrationWarning
       >
-        <SimulationProvider autoRefresh={true} refreshInterval={1000}>
-          {children}
-        </SimulationProvider>
+        <StyleLoader>
+          <SimulationProvider autoRefresh={true} refreshInterval={1000}>
+            {children}
+          </SimulationProvider>
+        </StyleLoader>
         <StagewiseDevToolbar />
       </body>
     </html>

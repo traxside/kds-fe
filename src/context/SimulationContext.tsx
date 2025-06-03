@@ -30,7 +30,7 @@ interface SimulationContextType {
   resetSimulation: () => Promise<void>;
   updateParameters: (
     parameters: Partial<SimulationParametersInput>
-  ) => Promise<void>;
+  ) => void;
   clearError: () => void;
   checkConnection: () => Promise<void>;
 }
@@ -45,6 +45,11 @@ interface SimulationProviderProps {
   children: ReactNode;
   autoRefresh?: boolean;
   refreshInterval?: number;
+  // New debouncing options
+  enableDebouncing?: boolean;
+  enableAdaptiveRefresh?: boolean;
+  enableBatching?: boolean;
+  prioritizeCriticalUpdates?: boolean;
 }
 
 // Context provider component
@@ -52,11 +57,19 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
   children,
   autoRefresh = true,
   refreshInterval = 1000,
+  enableDebouncing = true,
+  enableAdaptiveRefresh = true,
+  enableBatching = true,
+  prioritizeCriticalUpdates = true,
 }) => {
   // Use the existing hook to manage simulation state
   const simulationState = useSimulation({
     autoRefresh,
     refreshInterval,
+    enableDebouncing,
+    enableAdaptiveRefresh,
+    enableBatching,
+    prioritizeCriticalUpdates,
   });
 
   return (

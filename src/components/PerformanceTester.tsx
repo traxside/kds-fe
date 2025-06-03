@@ -417,6 +417,7 @@ export default function PerformanceTester() {
                 height={600}
                 maxDisplayNodes={maxDisplayNodes[0]}
                 enableSpatialSampling={enableSpatialSampling}
+                enableAdaptivePerformance={true}
                 isSimulationRunning={false}
               />
             </div>
