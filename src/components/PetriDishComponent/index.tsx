@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback, memo } from "react";
+import ReactDOM from "react-dom"; // Import createPortal
 import { Bacterium } from "@/types/simulation";
 import { PetriDishProps } from "./types";
 import { CachedNodeCuller, PerformanceMonitor } from "@/lib/performance";
@@ -21,16 +22,39 @@ interface TooltipProps {
 }
 
 const BacteriumTooltip: React.FC<TooltipProps> = ({ bacterium, x, y, containerWidth, containerHeight }) => {
+  // Calculate offset in pixels (approximately 1cm = 37.8px at 96 DPI)
+  const offsetX = 38; // ~1cm to the right
+  const offsetY = -38; // ~1cm above
+  
+  // Calculate final position - purely relative to cursor
+  const finalX = x + offsetX;
+  const finalY = y + offsetY;
+  
+  // Check boundaries and adjust if needed
+  const tooltipWidth = 180;
+  const tooltipHeight = 120; // estimated height
+  
+  let adjustedX = finalX;
+  let adjustedY = finalY;
+  
+  // Prevent tooltip from going off-screen
+  if (finalX + tooltipWidth > window.innerWidth) {
+    adjustedX = x - offsetX - tooltipWidth; // Show to the left instead
+  }
+  
+  if (finalY < 0) {
+    adjustedY = y + offsetX; // Show below instead
+  }
+
   return (
     <div
       style={{
         position: 'fixed',
-        left: 0,
-        top: 0,
-        transform: `translate(${x - 280}px, ${y - 70}px)`, // Use transform for precise positioning
+        left: `${finalX}px`,
+        top: `${finalY}px`,
         background: 'rgba(0, 0, 0, 0.95)',
         color: 'white',
-        padding: '10px',
+        padding: '8px 10px',
         borderRadius: '6px',
         fontSize: '11px',
         zIndex: 9999,
@@ -44,13 +68,13 @@ const BacteriumTooltip: React.FC<TooltipProps> = ({ bacterium, x, y, containerWi
     >
       <div style={{ 
         fontWeight: 'bold', 
-        marginBottom: '6px', 
+        marginBottom: '4px', 
         color: bacterium.isResistant ? '#ff6666' : '#66ff66',
         fontSize: '12px'
       }}>
         🦠 {bacterium.isResistant ? 'Resistant' : 'Sensitive'}
       </div>
-      <div style={{ lineHeight: '1.4', fontSize: '10px' }}>
+      <div style={{ lineHeight: '1.3', fontSize: '10px' }}>
         <div><strong>ID:</strong> {bacterium.id}</div>
         <div><strong>Age:</strong> {bacterium.age} gen</div>
         <div><strong>Gen:</strong> {bacterium.generation}</div>
@@ -446,14 +470,17 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       </div>
       
       {/* Custom Tooltip Component */}
-      {hoveredBacterium && (
-        <BacteriumTooltip
-          bacterium={hoveredBacterium}
-          x={mousePosition.x}
-          y={mousePosition.y}
-          containerWidth={actualWidth}
-          containerHeight={actualHeight}
-        />
+      {hoveredBacterium && mounted && (
+        ReactDOM.createPortal(
+          <BacteriumTooltip
+            bacterium={hoveredBacterium}
+            x={mousePosition.x}
+            y={mousePosition.y}
+            containerWidth={actualWidth}
+            containerHeight={actualHeight}
+          />,
+          document.body
+        )
       )}
       
       {/* Graph component wrapper - simplified */}
