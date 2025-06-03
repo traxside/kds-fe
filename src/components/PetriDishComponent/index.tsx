@@ -37,55 +37,46 @@ interface TooltipProps {
 }
 
 const BacteriumTooltip: React.FC<TooltipProps> = ({ bacterium, x, y, containerWidth, containerHeight }) => {
-  const tooltipWidth = 220;
-  const tooltipHeight = 160;
-  
-  // Much closer positioning to mouse cursor
-  const left = Math.min(Math.max(5, x + 8), containerWidth - tooltipWidth - 5);
-  const top = Math.min(Math.max(5, y - 30), containerHeight - tooltipHeight - 5);
-
   return (
     <div
       style={{
-        position: 'absolute',
-        left: left,
-        top: top,
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        transform: `translate(${x - 280}px, ${y - 70}px)`, // Use transform for precise positioning
         background: 'rgba(0, 0, 0, 0.95)',
         color: 'white',
-        padding: '12px',
-        borderRadius: '8px',
-        fontSize: '12px',
-        zIndex: 1000,
+        padding: '10px',
+        borderRadius: '6px',
+        fontSize: '11px',
+        zIndex: 9999,
         pointerEvents: 'none',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.6)',
         border: `2px solid ${bacterium.isResistant ? '#ff4444' : '#44ff44'}`,
-        minWidth: `${tooltipWidth}px`,
-        backdropFilter: 'blur(10px)',
+        width: '180px',
+        backdropFilter: 'blur(8px)',
         fontFamily: 'monospace'
       }}
     >
       <div style={{ 
         fontWeight: 'bold', 
-        marginBottom: '8px', 
+        marginBottom: '6px', 
         color: bacterium.isResistant ? '#ff6666' : '#66ff66',
-        borderBottom: '1px solid rgba(255,255,255,0.3)',
-        paddingBottom: '4px',
-        fontSize: '13px'
+        fontSize: '12px'
       }}>
-        🦠 {bacterium.isResistant ? 'Resistant' : 'Sensitive'} Bacterium
+        🦠 {bacterium.isResistant ? 'Resistant' : 'Sensitive'}
       </div>
-      <div style={{ lineHeight: '1.5', fontSize: '11px' }}>
+      <div style={{ lineHeight: '1.4', fontSize: '10px' }}>
         <div><strong>ID:</strong> {bacterium.id}</div>
         <div><strong>Age:</strong> {bacterium.age} gen</div>
-        <div><strong>Generation:</strong> {bacterium.generation}</div>
+        <div><strong>Gen:</strong> {bacterium.generation}</div>
         <div><strong>Resistant:</strong> {bacterium.isResistant ? '🔴 YES' : '🟢 NO'}</div>
         <div><strong>Fitness:</strong> {bacterium.fitness?.toFixed(3) || 'N/A'}</div>
         <div><strong>Size:</strong> {bacterium.size}px</div>
-        <div><strong>Pos:</strong> ({Math.round(bacterium.x)}, {Math.round(bacterium.y)})</div>
         {bacterium.parentId ? (
           <div><strong>Parent:</strong> {bacterium.parentId.substring(0, 8)}...</div>
         ) : (
-          <div><strong>Origin:</strong> Initial pop</div>
+          <div><strong>Origin:</strong> Initial</div>
         )}
       </div>
     </div>
@@ -137,6 +128,21 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
 
   useEffect(() => {
     setMounted(true);
+    
+    // Global mouse tracking for more accurate positioning
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      setMousePosition({
+        x: e.clientX,
+        y: e.clientY
+      });
+    };
+
+    // Add global mouse listener
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+    };
   }, []);
 
   // Sync the force graph ref for internal operations - no longer needed for D3
@@ -152,7 +158,6 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       const newWidth = width || rect.width || 600;
       const newHeight = height || rect.height || 600;
       
-      // Only update if size actually changed to prevent unnecessary re-renders
       setContainerSize(prev => {
         if (Math.abs(prev.width - newWidth) > 10 || Math.abs(prev.height - newHeight) > 10) {
           return { width: newWidth, height: newHeight };
@@ -164,23 +169,10 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
 
   useEffect(() => {
     updateSize();
-    // Remove resize listener to prevent constant updates
-    // The container should be stable now
   }, [updateSize]);
 
   const actualWidth = containerSize.width;
   const actualHeight = containerSize.height;
-
-  // Mouse tracking for tooltip positioning
-  const handleMouseMove = useCallback((event: React.MouseEvent) => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setMousePosition({
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
-      });
-    }
-  }, []);
 
   const handleMouseLeave = useCallback(() => {
     setHoveredBacterium(null);
@@ -418,7 +410,6 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
         maxWidth: '100%',
         maxHeight: '100%'
       }}
-      onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
       {/* Circular border overlay - fixed position to prevent movement */}
