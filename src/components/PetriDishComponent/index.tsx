@@ -1,5 +1,5 @@
 "use client";
-
+// TODO fix
 import React, { useEffect, useRef, useState, useCallback, memo } from "react";
 import { Bacterium } from "@/types/simulation";
 import { PetriDishProps } from "./types";
@@ -111,6 +111,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
 
     for (const bacterium of displayBacteria) {
       if (bacterium.parentId && displayedNodeIds.has(bacterium.parentId)) {
+        // Ensure both source (parent) and target (child) are in the current node set
         edges.push({
           from: bacterium.parentId,
           to: bacterium.id,
@@ -118,6 +119,8 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
         });
       }
     }
+    // The validateLinks function might still be useful, but its signature needs to match vis-network edges.
+    // For now, direct creation.
 
     endCullingTimer();
 
@@ -327,3 +330,15 @@ function debounce<T extends (...args: any[]) => any>( // eslint-disable-line @ty
 
 PetriDish.displayName = "PetriDish";
 export default PetriDish;
+
+        /* KEEP FOR NOW */
+// Helper for displaying performance, adapt or remove
+// const PerformanceDisplay = ({ metrics, stats }: { metrics: any; stats: any }) => (
+//   <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.5)', color: 'white', padding: 5, zIndex: 10 }}>
+//     <div>FPS: {metrics.frameRate?.toFixed(2)}</div>
+//     <div>Nodes: {metrics.nodeCount} (Displaying: {stats?.displayCount || metrics.nodeCount})</div>
+//     <div>Zoom: {metrics.zoomLevel?.toFixed(2)}</div>
+//     {stats && <div>Culled: {(stats.cullingRatio * 100).toFixed(1)}%</div>}
+//   </div>
+// );
+
