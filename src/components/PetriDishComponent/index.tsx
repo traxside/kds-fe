@@ -135,9 +135,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   }, [graphDataForVis.nodes.length, graphDataForVis.edges.length]);
 
   // Optimized options
-  const options: any = React.useMemo(
-      () => ({
-        // eslint-disable-line @typescript-eslint/no-explicit-any
+  const options: any = React.useMemo(() => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
         autoResize: false, // Disable auto-resize to prevent stretching
         width: `${containerSize.width}px`,
         height: `${containerSize.height}px`,
@@ -215,8 +213,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   // Stable event handlers
   const events = React.useMemo(() => ({
 
-        click: (event: any) => {
-          // eslint-disable-line @typescript-eslint/no-explicit-any
+        click: (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
           if (event.nodes && event.nodes.length > 0 && onBacteriumClick) {
             const selectedNodeId = event.nodes[0];
             const nodeData = graphDataForVis.nodes.find(
@@ -299,8 +296,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
             graph={graphDataForVis}
             options={options}
             events={events}
-            getNetwork={(networkInstance: any) => {
-              // eslint-disable-line @typescript-eslint/no-explicit-any
+            getNetwork={(networkInstance: any) => {// eslint-disable-line @typescript-eslint/no-explicit-any
               networkRef.current = networkInstance;
             }}
             style={{

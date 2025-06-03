@@ -130,7 +130,7 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
           }}
       >
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center justify-between">
+          <CardTitle className="text-lg flex flex-wrap items-center justify-between">
             <div className="flex items-center">
               <Settings
                   className="h-5 w-5 mr-2"
