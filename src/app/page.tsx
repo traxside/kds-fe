@@ -21,7 +21,6 @@ import {
   LuTriangleAlert,
   LuX,
   LuFlaskConical,
-  LuEye,
   LuList,
   LuSave,
   LuFolderOpen,
@@ -34,13 +33,12 @@ import VirtualizedBacteriaList from "@/components/VirtualizedBacteriaList";
 import SaveSimulationModal from "@/components/SaveSimulationModal";
 import LoadSimulationModal from "@/components/LoadSimulationModal";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import ConnectionStatus, {
+import {
   ConnectionStatusCompact,
 } from "@/components/ConnectionStatus";
 import { useSimulationContext } from "@/context/SimulationContext";
 import { Bacterium, SimulationParametersInput, Simulation } from "@/types/simulation";
 import { simulationApiSimple } from "@/lib/api";
-import Link from "next/link";
 
 // Move colors outside component to prevent recreation on every render
 const colors = {
@@ -127,7 +125,6 @@ export default function Dashboard() {
   const [simulationName, setSimulationName] = useState(
     "Bacteria Evolution Simulation"
   );
-  const [showConnectionDetails, setShowConnectionDetails] = useState(false);
   const [sampleBacteria, setSampleBacteria] = useState<Bacterium[]>([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
@@ -198,10 +195,6 @@ export default function Dashboard() {
     setSimulationName(e.target.value);
   }, []);
 
-  const handleToggleConnectionDetails = useCallback(() => {
-    setShowConnectionDetails(prev => !prev);
-  }, []);
-
   const handleOpenSaveModal = useCallback(() => {
     setShowSaveModal(true);
   }, []);
@@ -256,38 +249,39 @@ export default function Dashboard() {
   // Use simulation statistics from backend when available, otherwise calculate from bacteria
   const currentStats = useMemo(() => {
     if (simulation?.statistics && simulation.statistics.totalPopulation.length > 0) {
-      // Use latest statistics from backend simulation
-      const lastIndex = simulation.statistics.totalPopulation.length - 1;
+      const latestIndex = simulation.statistics.totalPopulation.length - 1;
+      const totalCount = simulation.statistics.totalPopulation[latestIndex];
+      const resistantCount = simulation.statistics.resistantCount[latestIndex];
+      
       return {
-        totalCount: simulation.statistics.totalPopulation[lastIndex] || 0,
-        resistantCount: simulation.statistics.resistantCount[lastIndex] || 0,
-        sensitiveCount: simulation.statistics.sensitiveCount[lastIndex] || 0,
-        resistancePercentage: simulation.statistics.totalPopulation[lastIndex] > 0 
-          ? (simulation.statistics.resistantCount[lastIndex] / simulation.statistics.totalPopulation[lastIndex]) * 100 
-          : 0,
+        totalPopulation: totalCount,
+        resistantCount: resistantCount,
+        sensitiveCount: totalCount - resistantCount,
+        resistancePercentage: totalCount > 0 ? (resistantCount / totalCount) * 100 : 0,
         isLiveData: true
       };
-    } else {
-      // Fallback to frontend calculation for sample data
-      const resistantCount = displayBacteria.filter((b) => b.isResistant).length;
+    } else if (displayBacteria.length > 0) {
       const totalCount = displayBacteria.length;
+      const resistantCount = displayBacteria.filter(b => b.isResistant).length;
+      
       return {
-        totalCount,
-        resistantCount,
+        totalPopulation: totalCount,
+        resistantCount: resistantCount,
         sensitiveCount: totalCount - resistantCount,
         resistancePercentage: totalCount > 0 ? (resistantCount / totalCount) * 100 : 0,
         isLiveData: false
       };
     }
+    
+    // Default fallback
+    return {
+      totalPopulation: 0,
+      resistantCount: 0,
+      sensitiveCount: 0,
+      resistancePercentage: 0,
+      isLiveData: false
+    };
   }, [simulation, displayBacteria]);
-
-  const resistancePercentage = useMemo(() => {
-    return displayBacteria.length > 0
-      ? (displayBacteria.filter((b) => b.isResistant).length /
-          displayBacteria.length) *
-        100
-      : 0;
-  }, [displayBacteria]);
 
   return (
     <ErrorBoundary>
@@ -339,36 +333,6 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <Link href="/virtualization-demo">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    style={{
-                      backgroundColor: `${colors.surface.a20}80`,
-                      borderColor: colors.surface.a30,
-                      color: colors.primary.a20,
-                    }}
-                  >
-                    <LuEye className="h-3 w-3 mr-1" />
-                    Virtualization Demo
-                  </Button>
-                </Link>
-                <Link href="/comparison">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    style={{
-                      backgroundColor: `${colors.surface.a20}80`,
-                      borderColor: colors.surface.a30,
-                      color: colors.primary.a20,
-                    }}
-                  >
-                    <LuList className="h-3 w-3 mr-1" />
-                    Compare Simulations
-                  </Button>
-                </Link>
                 <Badge
                   variant="outline"
                   className="text-xs"
@@ -700,7 +664,7 @@ export default function Dashboard() {
                           className="text-2xl font-semibold"
                           style={{ color: colors.primary.a0 }}
                         >
-                          {currentStats.totalCount}
+                          {currentStats.totalPopulation}
                         </div>
                         <div
                           className="text-xs"

@@ -96,7 +96,7 @@ export interface SimulationComplexityMetrics {
 export interface SimulationMetadata {
   // User-editable fields
   tags: string[]; // User-defined tags for categorization
-  category: string; // Primary category (e.g., "research", "education", "demo")
+  category: string; // Primary category (e.g., "research", "education")
   notes: string; // User notes and observations
   rating?: number; // User rating 1-5 stars
   favorite: boolean; // User favorited status
@@ -258,9 +258,7 @@ export const simulationCategories = [
   "general",
   "research",
   "education",
-  "demonstration",
   "experiment",
-  "comparison",
   "optimization",
   "validation",
 ] as const;

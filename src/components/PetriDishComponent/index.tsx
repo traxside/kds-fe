@@ -151,59 +151,67 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   }, [enableAdaptivePerformance]);
 
   const getOptimalParameters = useCallback((nodeCount: number, frameRate: number, zoomLevel: number) => {
-    let chargeStrength = -100;
-    let alphaDecay = 0.01;
-    let velocityDecay = 0.2;
-    let cooldownTicks = 50;
-    let cooldownTime = 1000;
+    // D3.js standard values for stable simulations
+    // Base configuration following D3 disjoint force-directed graph example
+    let chargeStrength = -30;
+    let alphaDecay = 0.0228; // D3's default - proper simulation settling
+    let velocityDecay = 0.4; // D3's default - good damping
+    let cooldownTicks = 300; // Allow proper simulation settling
+    let cooldownTime = 15000; // 15 seconds to settle
 
+    // Adaptive scaling based on node count
     if (nodeCount > 2000) {
-      chargeStrength = -20;
-      alphaDecay = 0.05;
-      velocityDecay = 0.4;
-      cooldownTicks = 20;
-      cooldownTime = 500;
+      chargeStrength = -15;
+      alphaDecay = 0.05; // Faster settling for large datasets
+      velocityDecay = 0.6; // More damping
+      cooldownTicks = 100;
+      cooldownTime = 5000;
     } else if (nodeCount > 1000) {
-      chargeStrength = -40;
-      alphaDecay = 0.03;
-      velocityDecay = 0.3;
-      cooldownTicks = 30;
-      cooldownTime = 750;
+      chargeStrength = -20;
+      alphaDecay = 0.035;
+      velocityDecay = 0.5;
+      cooldownTicks = 200;
+      cooldownTime = 10000;
     } else if (nodeCount > 500) {
-      chargeStrength = -60;
-      alphaDecay = 0.02;
-      velocityDecay = 0.25;
-      cooldownTicks = 40;
-      cooldownTime = 900;
+      chargeStrength = -25;
+      alphaDecay = 0.03;
+      velocityDecay = 0.45;
+      cooldownTicks = 250;
+      cooldownTime = 12000;
     }
 
+    // Performance-based adjustments
     if (frameRate < 30) {
-      chargeStrength *= 0.5;
-      alphaDecay *= 2;
-      velocityDecay *= 1.5;
-      cooldownTicks = Math.max(10, cooldownTicks * 0.5);
-      cooldownTime = Math.max(250, cooldownTime * 0.5);
+      chargeStrength *= 0.7; // Reduce computational load
+      alphaDecay *= 1.5; // Settle faster
+      velocityDecay *= 1.3; // More damping
+      cooldownTicks = Math.max(50, cooldownTicks * 0.5);
+      cooldownTime = Math.max(2000, cooldownTime * 0.5);
     } else if (frameRate < 45) {
-      chargeStrength *= 0.75;
-      alphaDecay *= 1.5;
-      velocityDecay *= 1.25;
-      cooldownTicks = Math.max(20, cooldownTicks * 0.75);
-      cooldownTime = Math.max(500, cooldownTime * 0.75);
-    }
-
-    if (zoomLevel > 2) {
-      chargeStrength *= 1.2;
-      alphaDecay *= 0.8;
-      velocityDecay *= 0.9;
-    } else if (zoomLevel < 0.5) {
-      chargeStrength *= 0.8;
+      chargeStrength *= 0.85;
       alphaDecay *= 1.2;
       velocityDecay *= 1.1;
+      cooldownTicks = Math.max(100, cooldownTicks * 0.75);
+      cooldownTime = Math.max(5000, cooldownTime * 0.75);
     }
 
+    // Zoom-based adjustments
+    if (zoomLevel > 2) {
+      chargeStrength *= 1.1; // Stronger forces when zoomed in
+      alphaDecay *= 0.9; // Slower settling for better interaction
+      velocityDecay *= 0.95;
+    } else if (zoomLevel < 0.5) {
+      chargeStrength *= 0.9; // Weaker forces when zoomed out
+      alphaDecay *= 1.1; // Faster settling
+      velocityDecay *= 1.05;
+    }
+
+    // IMPORTANT: Always allow simulation to settle properly
+    // Don't disable cooldown when simulation is running
     if (isSimulationRunning) {
-      cooldownTicks = 0;
-      cooldownTime = 0;
+      // Reduce cooldown but don't eliminate it completely
+      cooldownTicks = Math.max(50, cooldownTicks * 0.3);
+      cooldownTime = Math.max(2000, cooldownTime * 0.3);
     }
 
     return {
@@ -212,8 +220,8 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       velocityDecay,
       cooldownTicks,
       cooldownTime,
-      centerStrength: 0.1,
-      linkStrength: nodeCount > 500 ? 0.3 : 0.8,
+      centerStrength: 0.1, // Keep nodes loosely centered
+      linkStrength: nodeCount > 500 ? 0.1 : 0.3, // Weaker links for better stability
     };
   }, [isSimulationRunning]);
 
@@ -268,12 +276,27 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
         performanceMetrics.zoomLevel
       );
 
-      // Always clear the link force first to prevent stale references
+      // Always clear existing forces first to prevent stale references
       fg.d3Force("link", null);
+      fg.d3Force("x", null);
+      fg.d3Force("y", null);
 
+      // Core forces following D3.js disjoint force-directed graph pattern
       fg.d3Force("charge").strength(params.chargeStrength);
       fg.d3Force("center").strength(params.centerStrength);
       
+      // Add positioning forces to prevent continuous drifting
+      // These forces gently pull nodes toward the center, providing stability
+      fg.d3Force("x", fg.d3.forceX(actualWidth / 2).strength(0.1));
+      fg.d3Force("y", fg.d3.forceY(actualHeight / 2).strength(0.1));
+      
+      // Collision detection to prevent node overlap
+      fg.d3Force("collide", fg.d3.forceCollide()
+        .radius(d => (d.size || 5) + 1) // Node radius + small gap
+        .strength(0.7) // Strong collision resolution
+        .iterations(1) // Single iteration for performance
+      );
+
       // Safe access to links with additional validation
       if (safeLinks.length > 0 && safeNodes.length > 0) {
         const currentNodeIds = new Set(safeNodes.map(node => node.id));
@@ -318,10 +341,26 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
 
       // Safe boundary force with additional validation
       if (safeNodes.length > 0) {
+        // Use a stable boundary force that works with D3's physics
         fg.d3Force("boundary", () => {
+          const centerX = actualWidth / 2;
+          const centerY = actualHeight / 2;
+          const radius = Math.min(actualWidth, actualHeight) / 2 - 30;
+          
           safeNodes.forEach(node => {
-            if (node) { // Additional safety check for individual nodes
-              applyBoundary(node);
+            if (!node || typeof node.x !== 'number' || typeof node.y !== 'number') return;
+            
+            const dx = node.x - centerX;
+            const dy = node.y - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > radius) {
+              // Smoothly push nodes back inside the boundary
+              const strength = 0.1;
+              const factor = (distance - radius) / distance * strength;
+              
+              node.vx = (node.vx || 0) - dx * factor;
+              node.vy = (node.vy || 0) - dy * factor;
             }
           });
         });
@@ -350,10 +389,18 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       // Enhanced error recovery
       if (graphRef.current) {
         try {
-          // Clear all forces and restart with minimal configuration
+          // Clear all forces and restart with D3.js stable configuration
           graphRef.current.d3Force("link", null);
-          graphRef.current.d3Force("charge").strength(-30);
-          graphRef.current.d3Force("center").strength(0.1);
+          graphRef.current.d3Force("x", null);
+          graphRef.current.d3Force("y", null);
+          graphRef.current.d3Force("collide", null);
+          graphRef.current.d3Force("boundary", null);
+          
+          // Apply minimal stable forces
+          graphRef.current.d3Force("charge").strength(-30); // D3 default
+          graphRef.current.d3Force("center").strength(0.1); // Weak centering
+          graphRef.current.d3AlphaDecay(0.0228); // D3 default
+          graphRef.current.d3VelocityDecay(0.4); // D3 default
         } catch (fallbackError) {
           if (errorCountRef.current <= 2) {
             console.error('Error in fallback force configuration:', fallbackError);

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { LuCalendar, LuClock, LuPlay, LuPause, LuTrash2, LuDownload, LuEye, LuSearch, LuFilter, LuChevronDown, LuLayers, LuCheck, LuFileText, LuPackage, LuX } from "react-icons/lu";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { LuCalendar, LuClock, LuPlay, LuTrash2, LuDownload, LuSearch, LuChevronDown, LuCheck, LuFileText, LuPackage, LuX } from "react-icons/lu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,29 +34,23 @@ interface PaginatedSimulationsResponse {
 
 interface SimulationHistoryProps {
   onLoadSimulation?: (simulation: Simulation) => void;
-  onCompareSimulations?: (simulations: Simulation[]) => void;
   selectedSimulationIds?: string[];
   allowMultiSelect?: boolean;
-  compareMode?: boolean;
   className?: string;
 }
 
 export default function SimulationHistory({
   className = "",
   allowMultiSelect = false,
-  compareMode = false,
   selectedSimulationIds = [],
-  onCompareSimulations,
   onLoadSimulation,
 }: SimulationHistoryProps) {
   // Basic state
   const [simulations, setSimulations] = useState<Simulation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"date" | "name">("date");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,10 +77,10 @@ export default function SimulationHistory({
       const allSimulations = await simulationApiSimple.getSimulations();
       
       // Apply client-side filtering and sorting until we enhance the API
-      let filteredSimulations = allSimulations.filter(sim => {
+      const filteredSimulations = allSimulations.filter(sim => {
         // Search filter
-        const matchesSearch = searchQuery === "" || 
-          sim.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = searchTerm === "" || 
+          sim.name.toLowerCase().includes(searchTerm.toLowerCase());
         
         // Status filter
         const matchesStatus = statusFilter === "all" || 
@@ -122,7 +116,7 @@ export default function SimulationHistory({
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, statusFilter, sortBy, currentPage]);
+  }, [searchTerm, statusFilter, sortBy, currentPage]);
 
   // Load simulations on component mount and when filters change
   useEffect(() => {
@@ -134,7 +128,7 @@ export default function SimulationHistory({
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [searchQuery, statusFilter, sortBy]);
+  }, [searchTerm, statusFilter, sortBy, currentPage]);
 
   // Handle simulation selection
   const handleSimulationSelect = useCallback((simulationId: string) => {
@@ -285,33 +279,15 @@ export default function SimulationHistory({
         <div>
           <div className="flex items-center space-x-2">
             <h2 className="text-2xl font-bold tracking-tight">
-              {compareMode ? "Select Simulations to Compare" : "Simulation History"}
+              "Simulation History"
             </h2>
-            {compareMode && <LuLayers className="h-5 w-5 text-blue-600" />}
           </div>
           <p className="text-muted-foreground">
-            {compareMode && selectedIds.length > 0
-              ? `${selectedIds.length} simulation${selectedIds.length !== 1 ? 's' : ''} selected for comparison`
-              : `${totalSimulations} simulation${totalSimulations !== 1 ? 's' : ''} found`
-            }
+            {`${totalSimulations} simulation${totalSimulations !== 1 ? 's' : ''} found`}
           </p>
         </div>
         
         <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-          {/* Batch Actions for Compare Mode */}
-          {compareMode && selectedIds.length >= 2 && (
-            <Button
-              onClick={() => {
-                const selectedSimulations = simulations.filter(sim => selectedIds.includes(sim.id));
-                onCompareSimulations?.(selectedSimulations);
-              }}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
-            >
-              <LuLayers className="h-4 w-4" />
-              <span>Compare Selected ({selectedIds.length})</span>
-            </Button>
-          )}
-
           {/* Batch Export Actions */}
           {selectedIds.length > 0 && (
             <div className="flex space-x-2">
@@ -428,7 +404,7 @@ export default function SimulationHistory({
             <div className="text-center py-12">
               <p className="text-lg text-muted-foreground mb-2">No simulations found</p>
               <p className="text-sm text-muted-foreground">
-                {searchQuery || statusFilter !== "all" 
+                {searchTerm || statusFilter !== "all" 
                   ? "Try adjusting your search criteria" 
                   : "Create your first simulation to get started"
                 }
@@ -453,7 +429,7 @@ export default function SimulationHistory({
                     : "cursor-pointer hover:bg-gray-50/50"
                 }`}
                 onClick={() => {
-                  if (compareMode || allowMultiSelect) {
+                  if (allowMultiSelect) {
                     handleSimulationSelect(simulation.id);
                   }
                 }}
@@ -462,7 +438,7 @@ export default function SimulationHistory({
                   <div className="flex items-start justify-between">
                     <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex items-center space-x-2">
-                        {(compareMode || allowMultiSelect) && (
+                        {allowMultiSelect && (
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => handleSimulationSelect(simulation.id)}
@@ -532,7 +508,7 @@ export default function SimulationHistory({
                   </div>
 
                   {/* Action Buttons - Hidden in compare mode */}
-                  {!compareMode && (
+                  {!allowMultiSelect && (
                     <div className="flex items-center space-x-2 pt-2">
                       <div className="flex space-x-2">
                         {/* Export Dropdown */}

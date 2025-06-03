@@ -368,7 +368,6 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
                       // This would typically be controlled by parent component
                       console.log("Progressive loading toggled:", checked);
                     }}
-                    disabled // Disabled for demo - would be controlled by parent
                   />
                   <Label htmlFor="progressive-loading" className="text-sm font-medium">
                     Progressive Loading
