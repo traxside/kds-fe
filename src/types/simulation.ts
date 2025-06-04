@@ -57,6 +57,7 @@ export interface SimulationState {
   isRunning: boolean;
   isPaused: boolean;
   stepCount: number;
+  simulationSpeed: number;
 }
 
 export interface SimulationStatistics {

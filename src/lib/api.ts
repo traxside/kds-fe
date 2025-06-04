@@ -295,6 +295,21 @@ export const simulationApi = {
     );
   },
 
+  // Update simulation speed
+  updateSimulationSpeed: (
+    id: string,
+    speed: number,
+    config?: AxiosRequestConfig & { signal?: AbortSignal }
+  ) => {
+    const { signal, ...axiosConfig } = config || {};
+    if (signal) {
+      (axiosConfig as AxiosRequestConfig).signal = signal;
+    }
+    return retryRequest(() =>
+      api.put<Simulation>(`/simulations/${id}/speed`, { speed }, axiosConfig)
+    );
+  },
+
   // Health check
   healthCheck: (config?: AxiosRequestConfig & { signal?: AbortSignal }) => {
     const { signal, ...axiosConfig } = config || {};
@@ -430,6 +445,12 @@ export const simulationApiSimple = {
     const response = await simulationApi.loadSimulation(id, { signal });
     return response.data;
   },
+
+  // Update simulation speed
+  async updateSimulationSpeed(id: string, speed: number, signal?: AbortSignal): Promise<Simulation> {
+    const response = await simulationApi.updateSimulationSpeed(id, speed, { signal });
+    return response.data;
+  }
 };
 
 // Mock API service for development and testing
@@ -454,6 +475,7 @@ export const mockSimulationApi = {
         isRunning: false,
         isPaused: false,
         stepCount: 0,
+        simulationSpeed: 1,
       },
       statistics: {
         totalPopulation: [100],
@@ -489,6 +511,7 @@ export const mockSimulationApi = {
         isRunning: false,
         isPaused: false,
         stepCount: 0,
+        simulationSpeed: 1,
       },
       statistics: {
         totalPopulation: [parameters.initialPopulation],

@@ -165,36 +165,6 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
 
   return (
     <div className="space-y-6 statistics-panel">
-      {/* Summary Statistics */}
-      {latestData && (
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Total Population
-                </p>
-                <p className="text-lg font-bold">{latestData.totalPop}</p>
-              </div>
-              <Activity className="h-5 w-5 text-blue-600" />
-            </div>
-          </Card>
-          <Card className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Resistance Rate
-                </p>
-                <p className="text-lg font-bold">
-                  {latestData.resistanceRate.toFixed(1)}%
-                </p>
-              </div>
-              <Shield className="h-5 w-5 text-red-600" />
-            </div>
-          </Card>
-        </div>
-      )}
-
       {/* Charts Tabs */}
       <Tabs defaultValue="population" className="space-y-4">
         <TabsList
@@ -271,7 +241,7 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={populationData}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                   <XAxis
@@ -322,7 +292,7 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={resistanceData}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                   <XAxis
@@ -372,7 +342,7 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={fitnessData}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                   <XAxis

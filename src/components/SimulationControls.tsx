@@ -25,6 +25,7 @@ import {
   LuSave,
 } from "react-icons/lu";
 import { useSimulationContext } from "@/context/SimulationContext";
+import { simulationApiSimple } from "@/lib/api";
 
 // Move colors outside component to prevent recreation on every render
 const colors = {
@@ -99,11 +100,23 @@ const SimulationControls = memo<SimulationControlsProps>(function SimulationCont
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle simulation speed change
-  const handleSpeedChange = useCallback((value: number[]) => {
+  const handleSpeedChange = useCallback(async (value: number[]) => {
+    const newSpeed = value[0];
     setSimulationSpeed(value);
+    
     // Store in localStorage for persistence
-    localStorage.setItem("bacteria-simulation-speed", JSON.stringify(value[0]));
-  }, []);
+    localStorage.setItem("bacteria-simulation-speed", JSON.stringify(newSpeed));
+    
+    // Update backend if simulation exists
+    if (simulation?.id) {
+      try {
+        await simulationApiSimple.updateSimulationSpeed(simulation.id, newSpeed);
+      } catch (error) {
+        console.error("Failed to update simulation speed:", error);
+        // Optionally show error to user or revert the slider
+      }
+    }
+  }, [simulation?.id]);
 
   // Handle auto-save toggle
   const handleAutoSaveToggle = useCallback((enabled: boolean) => {
@@ -143,18 +156,23 @@ const SimulationControls = memo<SimulationControlsProps>(function SimulationCont
     setShowShortcuts(prev => !prev);
   }, []);
 
-  // Load preferences from localStorage on mount
+  // Load preferences from localStorage on mount and sync with simulation
   useEffect(() => {
     const savedSpeed = localStorage.getItem("bacteria-simulation-speed");
     const savedAutoSave = localStorage.getItem("bacteria-simulation-autosave");
 
-    if (savedSpeed) {
+    // Use simulation speed if available, otherwise use saved/default
+    const currentSpeed = simulation?.currentState?.simulationSpeed;
+    if (currentSpeed && currentSpeed !== simulationSpeed[0]) {
+      setSimulationSpeed([currentSpeed]);
+    } else if (savedSpeed && !currentSpeed) {
       setSimulationSpeed([JSON.parse(savedSpeed)]);
     }
+    
     if (savedAutoSave) {
       setAutoSaveEnabled(JSON.parse(savedAutoSave));
     }
-  }, []);
+  }, [simulation?.currentState?.simulationSpeed, simulationSpeed]);
 
   // Track elapsed time
   useEffect(() => {
