@@ -21,7 +21,7 @@ interface TooltipProps {
   containerHeight: number;
 }
 
-const BacteriumTooltip: React.FC<TooltipProps> = ({ bacterium, x, y, containerWidth, containerHeight }) => {
+const BacteriumTooltip: React.FC<TooltipProps> = ({ bacterium, x, y }) => {
   // Calculate offset in pixels (approximately 1cm = 37.8px at 96 DPI)
   const offsetX = 38; // ~1cm to the right
   const offsetY = -38; // ~1cm above
@@ -32,7 +32,7 @@ const BacteriumTooltip: React.FC<TooltipProps> = ({ bacterium, x, y, containerWi
   
   // Check boundaries and adjust if needed
   const tooltipWidth = 180;
-  const tooltipHeight = 120; // estimated height
+
   
   let adjustedX = finalX;
   let adjustedY = finalY;
@@ -50,8 +50,8 @@ const BacteriumTooltip: React.FC<TooltipProps> = ({ bacterium, x, y, containerWi
     <div
       style={{
         position: 'fixed',
-        left: `${finalX}px`,
-        top: `${finalY}px`,
+        left: `${adjustedX}px`,
+        top: `${adjustedY}px`,
         background: 'rgba(0, 0, 0, 0.95)',
         color: 'white',
         padding: '8px 10px',
@@ -95,7 +95,6 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   bacteria,
   width,
   height,
-  isSimulationRunning = false,
   onBacteriumClick,
   maxDisplayNodes = 1000,
   enableSpatialSampling = true,
@@ -514,28 +513,6 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   );
 });
 
-// Utility function for debouncing
-function debounce<T extends (...args: any[]) => any>( // eslint-disable-line @typescript-eslint/no-explicit-any
-    func: T,
-    wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
 
 PetriDish.displayName = 'PetriDish';
 export default PetriDish;
-
-/* KEEP FOR NOW */
-// Helper for displaying performance, adapt or remove
-// const PerformanceDisplay = ({ metrics, stats }: { metrics: any; stats: any }) => (
-//   <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.5)', color: 'white', padding: 5, zIndex: 10 }}>
-//     <div>FPS: {metrics.frameRate?.toFixed(2)}</div>
-//     <div>Nodes: {metrics.nodeCount} (Displaying: {stats?.displayCount || metrics.nodeCount})</div>
-//     <div>Zoom: {metrics.zoomLevel?.toFixed(2)}</div>
-//     {stats && <div>Culled: {(stats.cullingRatio * 100).toFixed(1)}%</div>}
-//   </div>
-// );
