@@ -54,7 +54,7 @@ const BacteriaListItem = memo<BacteriaListItemProps>(function BacteriaListItem({
   if (!bacterium) {
     return (
       <div style={style}>
-        <div className="p-3 mx-2 my-1 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
+        <div className="h-full p-3 mx-2 my-1 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
           <div className="flex items-center space-x-3">
             <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
             <div className="flex-1">
@@ -98,25 +98,25 @@ const BacteriaListItem = memo<BacteriaListItemProps>(function BacteriaListItem({
                     Progressive
                   </Badge>
                 )}
+                {bacterium.isResistant && (
+                  <Badge variant="destructive" className="text-xs">
+                    Resistant
+                  </Badge>
+                )}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 Gen {bacterium.generation} • Age {bacterium.age}
               </div>
             </div>
           </div>
-          
           <div className="flex items-center space-x-2">
-            {bacterium.isResistant && (
-              <Badge variant="destructive" className="text-xs">
-                Resistant
-              </Badge>
-            )}
             <Badge variant="outline" className="text-xs">
               Fitness: {(bacterium.fitness * 100).toFixed(0)}%
             </Badge>
           </div>
         </div>
-        
+
+
         <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-300">
           <div>Position: ({bacterium.x.toFixed(0)}, {bacterium.y.toFixed(0)})</div>
           <div>Size: {bacterium.size.toFixed(1)}px</div>
@@ -176,7 +176,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(bacterium => 
+      filtered = filtered.filter(bacterium =>
         bacterium.id.toLowerCase().includes(searchLower) ||
         bacterium.generation.toString().includes(searchLower) ||
         bacterium.age.toString().includes(searchLower)
@@ -197,7 +197,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
     // Apply sorting
     filtered.sort((a, b) => {
       let aValue: string | number, bValue: string | number;
-      
+
       switch (sortBy) {
         case 'id':
           aValue = a.id;
@@ -235,7 +235,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
   useEffect(() => {
     if (enableProgressiveLoading && dataLoader && progressiveLoader.isInitialized) {
       const visibleCount = Math.ceil(height / 80) + 10; // 80px per item + buffer
-      
+
       progressiveLoader.loadVisibleData(
         { start: 0, end: visibleCount },
         dataLoader
@@ -283,7 +283,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
       const startIndex = Math.floor(props.scrollOffset / itemHeight);
       const visibleCount = Math.ceil(height / itemHeight);
       const endIndex = startIndex + visibleCount + 20; // Add buffer
-      
+
       // Load data for visible range
       progressiveLoader.loadVisibleData(
         { start: startIndex, end: endIndex },
@@ -318,7 +318,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
           </CardTitle>
           <div className="flex items-center space-x-2">
             {enableProgressiveLoading && progressiveLoader.isEnabled && (
-              <CompactProgressiveLoadingIndicator 
+              <CompactProgressiveLoadingIndicator
                 state={progressiveLoader.state}
                 className="text-xs"
               />
@@ -334,7 +334,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
             </Button>
           </div>
         </div>
-        
+
         {/* Search Bar */}
         <div className="relative">
           <LuSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -348,7 +348,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
 
         {/* Progressive Loading Indicator */}
         {enableProgressiveLoading && progressiveLoader.isEnabled && progressiveLoader.state.isLoading && (
-          <ProgressiveLoadingIndicator 
+          <ProgressiveLoadingIndicator
             state={progressiveLoader.state}
             showDetails={true}
           />
@@ -431,7 +431,7 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
             height={height}
             width="100%"
             itemCount={filteredAndSortedBacteria.length}
-            itemSize={80} // Fixed height for each item
+            itemSize={110} // Fixed height for each item
             itemData={listData}
             overscanCount={5} // Render 5 extra items for smooth scrolling
             onScroll={handleScroll}
@@ -444,4 +444,4 @@ const VirtualizedBacteriaList = memo<VirtualizedBacteriaListProps>(function Virt
   );
 });
 
-export default VirtualizedBacteriaList; 
+export default VirtualizedBacteriaList;

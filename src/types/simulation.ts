@@ -99,21 +99,21 @@ export interface SimulationMetadata {
   notes: string; // User notes and observations
   rating?: number; // User rating 1-5 stars
   favorite: boolean; // User favorited status
-  
+
   // Automatically generated fields
   version: string; // Simulation engine version used
   performanceMetrics: SimulationPerformanceMetrics;
   complexityMetrics: SimulationComplexityMetrics;
-  
+
   // Research and analysis fields
   hypothesis?: string; // Research hypothesis being tested
   methodology?: string; // Experimental methodology
   conclusions?: string; // Research conclusions
-  
+
   // Collaboration fields
   sharedWith?: string[]; // User IDs simulation is shared with
   isPublic: boolean; // Whether simulation is publicly viewable
-  
+
   // Technical metadata
   browserInfo?: string; // Browser and version used
   deviceInfo?: string; // Device type and capabilities
@@ -139,7 +139,7 @@ export interface Simulation {
   updatedAt: string;
   completedAt?: string;
   userId?: string;
-  
+
   // Extended metadata
   metadata?: SimulationMetadata;
 }
@@ -148,34 +148,34 @@ export interface Simulation {
 export interface SimulationSearchFilters {
   // Text search
   searchQuery?: string;
-  
+
   // Status filters
   status?: "all" | "running" | "paused" | "completed";
-  
+
   // Date range filters
   createdAfter?: string;
   createdBefore?: string;
-  
+
   // Parameter range filters
   populationRange?: { min: number; max: number };
   growthRateRange?: { min: number; max: number };
   antibioticConcentrationRange?: { min: number; max: number };
   mutationRateRange?: { min: number; max: number };
-  
+
   // Metadata filters
   tags?: string[];
   category?: string;
   rating?: number;
   favoritesOnly?: boolean;
   isPublic?: boolean;
-  
+
   // Complexity filters
   complexityRange?: { min: number; max: number };
-  
+
   // Sorting options
   sortBy?: "date" | "name" | "rating" | "complexity" | "performance";
   sortOrder?: "asc" | "desc";
-  
+
   // Pagination
   page?: number;
   limit?: number;
