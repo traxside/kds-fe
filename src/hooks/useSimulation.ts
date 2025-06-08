@@ -7,18 +7,18 @@ import {
 import simulationApiSimple, {
   getErrorMessage,
   isNetworkError,
-} from "@/lib/api";
-import { 
-  debounce, 
+} from "@/lib/api_new";
+import {
+  debounce,
   adaptiveDebounce,
   globalUpdateScheduler,
   UpdatePriority,
   type DebounceFunction
 } from "@/lib/debounce";
-import { 
-  useSmartRefresh, 
+import {
+  useSmartRefresh,
   useDebouncedParameters,
-  type DebouncedSimulationOptions 
+  type DebouncedSimulationOptions
 } from "@/hooks/useDebouncedSimulation";
 
 interface UseSimulationOptions {
@@ -66,8 +66,8 @@ interface UseSimulationReturn {
 export function useSimulation(
   options: UseSimulationOptions = {}
 ): UseSimulationReturn {
-  const { 
-    autoRefresh = false, 
+  const {
+    autoRefresh = false,
     refreshInterval = 1000,
     enableDebouncing = true,
     enableAdaptiveRefresh = true,
@@ -93,7 +93,7 @@ export function useSimulation(
   // Error handling helper
   const handleError = useCallback((err: unknown) => {
     const message = getErrorMessage(err);
-    
+
     if (enableBatching) {
       globalUpdateScheduler.schedule({
         id: 'simulation-error',
@@ -134,12 +134,12 @@ export function useSimulation(
   const fetchSimulationData = useCallback(async (id: string): Promise<void> => {
     const startTime = performance.now();
     fetchCountRef.current++;
-    
+
     try {
       const updatedSimulation = await simulationApiSimple.getSimulation(id);
       const fetchTime = performance.now() - startTime;
       lastFetchTimeRef.current = fetchTime;
-      
+
       if (enableBatching) {
         // Check for critical updates (resistance emergence, errors)
         // Use a callback to get current bacteria state to avoid circular dependency
@@ -149,14 +149,14 @@ export function useSimulation(
           callback: () => {
             // Check for resistance emergence at the time of update
             const currentBacteria = bacteria; // This will be captured from closure
-            const hasNewResistance = prioritizeCriticalUpdates && 
+            const hasNewResistance = prioritizeCriticalUpdates &&
               updatedSimulation.currentState?.bacteria?.some(b => b.isResistant) &&
               !currentBacteria.some(b => b.isResistant);
-            
+
             setSimulation(updatedSimulation);
             setBacteria(updatedSimulation.currentState?.bacteria || []);
             setIsConnected(true);
-            
+
             if (hasNewResistance) {
               console.log('Resistance emergence detected during fetch');
             }
@@ -168,7 +168,7 @@ export function useSimulation(
         setBacteria(updatedSimulation.currentState?.bacteria || []);
         setIsConnected(true);
       }
-      
+
       // Log performance warnings
       if (fetchTime > 500) {
         console.warn(`Slow API fetch: ${fetchTime.toFixed(2)}ms for simulation ${id}`);
@@ -183,13 +183,13 @@ export function useSimulation(
     if (!enableDebouncing) {
       return fetchSimulationData;
     }
-    
+
     // Create wrapper function with proper typing for debounce functions
     const wrappedFetch = (...args: unknown[]): unknown => {
       const id = args[0] as string;
       return fetchSimulationData(id);
     };
-    
+
     return enableAdaptiveRefresh
       ? adaptiveDebounce(wrappedFetch, refreshInterval, {
           minWait: refreshInterval / 2,
@@ -207,7 +207,7 @@ export function useSimulation(
   const checkConnection = useCallback(async () => {
     try {
       await simulationApiSimple.healthCheck();
-      
+
       if (enableBatching) {
         globalUpdateScheduler.schedule({
           id: 'connection-restored',
@@ -276,7 +276,7 @@ export function useSimulation(
           name,
           parameters
         );
-        
+
         if (enableBatching) {
           globalUpdateScheduler.schedule({
             id: 'simulation-created',
@@ -314,7 +314,7 @@ export function useSimulation(
       const updatedSimulation = await simulationApiSimple.startSimulation(
         simulation.id
       );
-      
+
       if (enableBatching) {
         globalUpdateScheduler.schedule({
           id: 'simulation-started',
@@ -350,7 +350,7 @@ export function useSimulation(
       const updatedSimulation = await simulationApiSimple.stopSimulation(
         simulation.id
       );
-      
+
       if (enableBatching) {
         globalUpdateScheduler.schedule({
           id: 'simulation-stopped',
@@ -386,7 +386,7 @@ export function useSimulation(
       const updatedSimulation = await simulationApiSimple.resetSimulation(
         simulation.id
       );
-      
+
       if (enableBatching) {
         globalUpdateScheduler.schedule({
           id: 'simulation-reset',
@@ -422,7 +422,7 @@ export function useSimulation(
       const updatedSimulation = await simulationApiSimple.stepSimulation(
         simulation.id
       );
-      
+
       if (enableBatching) {
         globalUpdateScheduler.schedule({
           id: 'simulation-stepped',
@@ -455,7 +455,7 @@ export function useSimulation(
 
       try {
         const loadedSimulation = await simulationApiSimple.getSimulation(id);
-        
+
         if (enableBatching) {
           globalUpdateScheduler.schedule({
             id: 'simulation-loaded',

@@ -16,8 +16,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Activity,
-  Shield,
+  // Activity,
+  // Shield,
   TrendingUp,
   Microscope,
   FileText,
@@ -135,21 +135,21 @@ const StatisticsPanel = memo<StatisticsPanelProps>(function StatisticsPanel({
   }, [currentStats]);
 
   // Calculate summary statistics
-  const latestData = useMemo(() => {
-    const lastIndex = currentStats.generations.length - 1;
-    if (lastIndex < 0) return null;
-
-    return {
-      totalPop: currentStats.totalPopulation[lastIndex] || 0,
-      resistantPop: currentStats.resistantCount[lastIndex] || 0,
-      sensitivePop: currentStats.sensitiveCount[lastIndex] || 0,
-      avgFitness: currentStats.averageFitness[lastIndex] || 0,
-      resistanceRate:
-        ((currentStats.resistantCount[lastIndex] || 0) /
-          (currentStats.totalPopulation[lastIndex] || 1)) *
-        100,
-    };
-  }, [currentStats]);
+  // const latestData = useMemo(() => {
+  //   const lastIndex = currentStats.generations.length - 1;
+  //   if (lastIndex < 0) return null;
+  //
+  //   return {
+  //     totalPop: currentStats.totalPopulation[lastIndex] || 0,
+  //     resistantPop: currentStats.resistantCount[lastIndex] || 0,
+  //     sensitivePop: currentStats.sensitiveCount[lastIndex] || 0,
+  //     avgFitness: currentStats.averageFitness[lastIndex] || 0,
+  //     resistanceRate:
+  //       ((currentStats.resistantCount[lastIndex] || 0) /
+  //         (currentStats.totalPopulation[lastIndex] || 1)) *
+  //       100,
+  //   };
+  // }, [currentStats]);
 
   // Memoized loading component
   const loadingComponent = useMemo(() => (

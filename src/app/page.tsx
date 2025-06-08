@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// Icons
 import {
   LuPlay,
   LuPause,
@@ -24,6 +26,8 @@ import {
   LuSave,
   LuFolderOpen,
 } from "react-icons/lu";
+
+
 import PetriDish from "@/components/PetriDishComponent";
 import SimulationParameterForm from "@/components/SimulationParameterForm";
 import StatisticsPanel from "@/components/StatisticsPanel";
@@ -37,7 +41,7 @@ import {
 } from "@/components/ConnectionStatus";
 import { useSimulationContext } from "@/context/SimulationContext";
 import { Bacterium, SimulationParametersInput, Simulation } from "@/types/simulation";
-import { simulationApiSimple } from "@/lib/api";
+import { simulationApiSimple } from "@/lib/api_new";
 import Image from "next/image";
 import { BacteriaLegend } from "@/components/BacteriaLegend";
 
@@ -70,44 +74,38 @@ const colors = {
   light: "#ffffff",
 };
 
+// Init
+const response = await simulationApiSimple.getSimulation('684438c3f08c530097664fa8');
+let id = '684438c3f08c530097664fa8';
 // Generate sample bacteria function moved outside to prevent recreation
-const generateSampleBacteria = (): Bacterium[] => {
+const generateSampleBacteria = (response : Simulation): Bacterium[] => {
   const sampleBacteria: Bacterium[] = [];
-  const centerX = 300;
-  const centerY = 300;
-  const maxRadius = 250;
+  // const centerX = 300;
+  // const centerY = 300;
+  // const maxRadius = 250;
+  const bacteriaObj = response.simulation.currentState.bacteria;
+  console.log('Halo:', bacteriaObj);
+  for (let i = 0; i < bacteriaObj.length; i++) {
+    const currentBacterium = bacteriaObj[i];
+    // const id = currentBacterium.id;
+    // // const angle = Math.random() * 2 * Math.PI;
+    // // const radius = Math.random() * maxRadius;
+    // const x = currentBacterium.x;
+    // const y = currentBacterium.y;
+    // const isResistant = currentBacterium.isResistant;
 
-  for (let i = 0; i < 50; i++) {
-    const angle = Math.random() * 2 * Math.PI;
-    const radius = Math.random() * maxRadius;
-    const x = centerX + radius * Math.cos(angle);
-    const y = centerY + radius * Math.sin(angle);
-    const isResistant = Math.random() < 0.2;
-
-    const bacterium: Bacterium = {
-      id: `bacteria-${i}`,
-      x,
-      y,
-      isResistant,
-      fitness: 0.5 + Math.random() * 0.5,
-      age: Math.floor(Math.random() * 10),
-      generation: Math.floor(Math.random() * 5),
-      parentId:
-        i > 10 ? `bacteria-${Math.floor(Math.random() * 10)}` : undefined,
-      color: isResistant ? "#ef4444" : "#22c55e",
-      size: 3 + Math.random() * 3,
-    };
+    const bacterium: Bacterium = currentBacterium;
 
     sampleBacteria.push(bacterium);
   }
-
+  console.log(sampleBacteria);
   return sampleBacteria;
 };
 
 export default function Dashboard() {
   // Use the simulation context instead of the direct hook
   const {
-    simulation,
+    // simulation,
     bacteria,
     isLoading,
     isSimulationRunning,
@@ -131,10 +129,10 @@ export default function Dashboard() {
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [savedSimulations, setSavedSimulations] = useState<Simulation[]>([]);
   const [savingSimulation, setSavingSimulation] = useState(false);
-
+  const [simulation, setSimulation] = useState<Simulation>(undefined);
   // Initialize sample data on mount
   useEffect(() => {
-    setSampleBacteria(generateSampleBacteria());
+    setSampleBacteria(generateSampleBacteria(response));
   }, []);
 
   // Load saved simulations when load modal opens
@@ -157,7 +155,14 @@ export default function Dashboard() {
   const handleSimulationSubmit = useCallback(
     async (parameters: SimulationParametersInput) => {
       try {
-        await createSimulation(simulationName, parameters);
+        console.log(id);
+        const response = await simulationApiSimple.createSimulation(simulationName, parameters);
+        console.log("Ini dari memoized itu lho: ", response);
+        id = response.simulation.id;
+        // Update petri dish
+        setSampleBacteria(generateSampleBacteria(response));
+        setSimulation(response.simulation);
+        console.log(id);
       } catch (err) {
         console.error("Failed to create simulation:", err);
       }
@@ -166,12 +171,17 @@ export default function Dashboard() {
   );
 
   const handlePlayPause = useCallback(async () => {
+    console.log("Button clicked");
+    console.log(isSimulationRunning);
+    console.log(simulation);
     try {
       if (isSimulationRunning) {
         await stopSimulation();
       } else {
         if (simulation) {
-          await startSimulation();
+          console.log("Entering the simulation conditional");
+          const response = await simulationApiSimple.startSimulation(simulation.id);
+          console.log(response);
         }
       }
     } catch (err) {
@@ -185,7 +195,7 @@ export default function Dashboard() {
         await resetSimulation();
       } else {
         // If no simulation exists, just regenerate sample bacteria
-        setSampleBacteria(generateSampleBacteria());
+        setSampleBacteria(generateSampleBacteria(response));
       }
     } catch (err) {
       console.error("Failed to reset simulation:", err);
