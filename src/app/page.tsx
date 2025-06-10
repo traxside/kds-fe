@@ -120,17 +120,21 @@ export default function Dashboard() {
     clearError,
     checkConnection,
     loadSimulation,
+    runFullSimulation,
+    runLiveSimulation,
   } = useSimulationContext();
 
   // Local state for UI
   const [simulationName, setSimulationName] = useState(
     "Bacteria Evolution Simulation"
   );
+  const [useAnimation, setUseAnimation] = useState(false);
   const [sampleBacteria, setSampleBacteria] = useState<Bacterium[]>([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [savedSimulations, setSavedSimulations] = useState<Simulation[]>([]);
   const [savingSimulation, setSavingSimulation] = useState(false);
+  const [isSubmittingSimulation, setIsSubmittingSimulation] = useState(false);
 
   // Initialize sample data on mount
   useEffect(() => {
@@ -156,21 +160,59 @@ export default function Dashboard() {
   // Memoized event handlers
   const handleSimulationSubmit = useCallback(
     async (parameters: SimulationParametersInput) => {
+      // Prevent double submission
+      if (isSubmittingSimulation) {
+        console.log("[Dashboard] Already submitting, ignoring duplicate submission");
+        return;
+      }
+      
       try {
+        setIsSubmittingSimulation(true);
+        console.log("[Dashboard] ===== handleSimulationSubmit called =====");
+        console.log("[Dashboard] handleSimulationSubmit called with:", parameters);
+        console.log("[Dashboard] simulationName:", simulationName);
+        console.log("[Dashboard] useAnimation:", useAnimation);
+        console.log("[Dashboard] isSubmittingSimulation before:", isSubmittingSimulation);
+        
         // Clear local sample bacteria since we're creating a real simulation
         setSampleBacteria([]);
         
-        // Create simulation in context - this will handle all the state management
-        await createSimulation(simulationName, parameters);
+        console.log("[Dashboard] Creating simulation and running full evolution...");
         
-        console.log("Simulation created successfully and synced with context");
+        // First create the simulation (generation 0) and get the created simulation directly
+        const createdSimulation = await createSimulation(simulationName, parameters);
+        
+        console.log("[Dashboard] Simulation created successfully:", {
+          simulationId: createdSimulation.id,
+          simulationName: createdSimulation.name,
+          initialBacteria: createdSimulation.currentState?.bacteria?.length || 0
+        });
+        
+        console.log("[Dashboard] Now running full evolution...");
+        
+        // Run simulation based on animation preference  
+        if (useAnimation) {
+          await runLiveSimulation(300); // 300ms between generations for smooth animation
+        } else {
+          await runFullSimulation();
+        }
+        
+        console.log("[Dashboard] Full simulation completed successfully");
+        
+        // Force a small delay to allow React states to update
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        console.log("[Dashboard] Post-simulation bacteria count:", bacteria.length);
+        console.log("[Dashboard] Post-simulation simulation object:", simulation);
       } catch (err) {
-        console.error("Failed to create simulation:", err);
+        console.error("Failed to create and run simulation:", err);
         // On error, keep sample bacteria empty so context can handle it
         setSampleBacteria([]);
+      } finally {
+        setIsSubmittingSimulation(false);
       }
     },
-    [createSimulation, simulationName]
+    [createSimulation, runFullSimulation, runLiveSimulation, simulationName, useAnimation, isSubmittingSimulation]
   );
 
   const handlePlayPause = useCallback(async () => {
@@ -779,10 +821,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Simulation Controls */}
-                <SimulationControls
-                  showKeyboardShortcuts={true}
-                  showAdvancedControls={true}
-                />
+                <SimulationControls />
 
                 {/* Parameters Only */}
                 <Card
@@ -838,13 +877,45 @@ export default function Dashboard() {
                         style={{ backgroundColor: colors.surface.a20 }}
                       />
 
+                      {/* Animation Mode Toggle - Simple */}
+                      <div className="flex items-center justify-between">
+                        <Label
+                          className="text-sm font-medium flex items-center"
+                          style={{ color: colors.light }}
+                        >
+                          <LuZap className="h-4 w-4 mr-2" style={{ color: colors.primary.a0 }} />
+                          {useAnimation ? 'Live Animation Mode' : 'Instant Result Mode'}
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUseAnimation(!useAnimation)}
+                          disabled={isLoading || isSimulationRunning}
+                          className="border h-8"
+                          style={{
+                            backgroundColor: useAnimation ? colors.primary.a0 : `${colors.surface.a20}80`,
+                            backdropFilter: "blur(8px)",
+                            borderColor: colors.surface.a30,
+                            color: useAnimation ? colors.surface.a0 : colors.light
+                          }}
+                        >
+                          {useAnimation ? 'Live' : 'Fast'}
+                        </Button>
+                      </div>
+
                       <div style={{ overflow: 'hidden' }}>
                         <SimulationParameterForm
                           onSubmit={handleSimulationSubmit}
-                          isLoading={isLoading}
+                          isLoading={isLoading || isSubmittingSimulation}
                           defaultValues={simulation?.parameters || undefined}
-                          disabled={isSimulationRunning || !isConnected}
+                          disabled={isSimulationRunning || !isConnected || isSubmittingSimulation}
                         />
+                        
+                        {/* Debug: Show loading state */}
+                        <div className="text-xs mt-2" style={{ color: colors.surface.a50 }}>
+                          Debug: isLoading={String(isLoading)}, isSubmittingSimulation={String(isSubmittingSimulation)}, isSimulationRunning={String(isSimulationRunning)}, isConnected={String(isConnected)}
+                        </div>
                       </div>
                     </div>
                   </CardContent>

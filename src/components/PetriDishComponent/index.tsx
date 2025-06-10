@@ -241,19 +241,47 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       console.error('Original bacteria IDs:', displayBacteria.map(b => b.id));
       
       // Create completely new unique IDs for all nodes to prevent vis-network error
-      const fixedNodes = nodes.map((node, index) => ({
-        ...node,
-        id: `fixed-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`,
-        originalData: {
-          ...node.originalData,
-          id: `fixed-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`
+      // But maintain a mapping of original ID -> new ID for edges
+      const originalToNewIdMap = new Map<string, string>();
+      
+      const fixedNodes = nodes.map((node, index) => {
+        const newId = `fixed-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`;
+        originalToNewIdMap.set(node.originalData.id, newId);
+        
+        return {
+          ...node,
+          id: newId,
+          originalData: {
+            ...node.originalData,
+            // Keep original ID in originalData for reference, but use new ID for vis-network
+          }
+        };
+      });
+      
+      // Now create edges using the new IDs
+      const fixedEdges: { from: string; to: string; arrows?: string }[] = [];
+      
+      for (const bacterium of displayBacteria) {
+        if (bacterium.parentId) {
+          const newChildId = originalToNewIdMap.get(bacterium.id);
+          const newParentId = originalToNewIdMap.get(bacterium.parentId);
+          
+          if (newChildId && newParentId) {
+            fixedEdges.push({
+              from: newParentId,
+              to: newChildId,
+              arrows: 'to',
+            });
+          }
         }
-      }));
+      }
       
       console.log('Fixed nodes with new IDs, count:', fixedNodes.length);
+      console.log('Fixed edges with new IDs, count:', fixedEdges.length);
+      
       return {
         nodes: fixedNodes,
-        edges: [], // Skip edges to prevent further issues
+        edges: fixedEdges, // Use fixed edges instead of empty array
       };
     }
 
@@ -261,6 +289,11 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
     const edges: { from: string; to: string; arrows?: string }[] = [];
     const displayedNodeIds = new Set(displayBacteria.map(b => b.id));
 
+    // Debug: Log parent-child relationships
+    const bacteriaWithParents = displayBacteria.filter(b => b.parentId);
+    console.log('[Evolution Debug] Bacteria with parents:', bacteriaWithParents.length);
+    console.log('[Evolution Debug] Sample bacteria with parentId:', bacteriaWithParents.slice(0, 3));
+    
     for (const bacterium of displayBacteria) {
       if (bacterium.parentId && displayedNodeIds.has(bacterium.parentId)) {
         // Ensure both source (parent) and target (child) are in the current node set
@@ -271,8 +304,9 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
         });
       }
     }
-    // The validateLinks function might still be useful, but its signature needs to match vis-network edges.
-    // For now, direct creation.
+    
+    console.log('[Evolution Debug] Edges created:', edges.length);
+    console.log('[Evolution Debug] Sample edges:', edges.slice(0, 3));
 
     endCullingTimer();
 
@@ -297,6 +331,19 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
     const bacteriaHash = bacteria?.slice(0, 5).map(b => b.id).join('-') || 'empty';
     return `graph-${bacteriaCount}-${bacteriaHash}-${Date.now()}`;
   }, [bacteria]);
+
+  // Debug effect for graph data
+  useEffect(() => {
+    console.log('[PetriDish] Rendering Graph with data:', {
+      nodes: graphDataForVis.nodes.length,
+      edges: graphDataForVis.edges.length,
+      mounted,
+      actualWidth,
+      actualHeight,
+      graphKey,
+      sampleNodes: graphDataForVis.nodes.slice(0, 2)
+    });
+  }, [graphDataForVis, mounted, actualWidth, actualHeight, graphKey]);
 
   // Define options for react-graph-vis
   const options = React.useMemo(() => ({
@@ -327,22 +374,22 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       }
     },
     edges: {
-      color: "#cccccc",
-      width: 1,
+      color: "#ff6b6b",
+      width: 3,
       smooth: {
         enabled: true,
         type: "continuous",
         roundness: 0.5,
       },
       arrows: {
-        to: { enabled: true, scaleFactor: 0.6, type: 'arrow' }
+        to: { enabled: true, scaleFactor: 1.0, type: 'arrow' }
       },
       shadow: {
         enabled: true,
-        color: 'rgba(0,0,0,0.2)',
-        size: 3,
-        x: 1,
-        y: 1
+        color: 'rgba(255,107,107,0.4)',
+        size: 4,
+        x: 2,
+        y: 2
       }
     },
     physics: {
@@ -535,11 +582,14 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
           options={options as any} // eslint-disable-line @typescript-eslint/no-explicit-any
           events={events}
           getNetwork={(networkInstance: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+            console.log('[PetriDish] vis-network instance received:', !!networkInstance);
             networkRef.current = networkInstance;
           }}
           style={{ 
             width: '100%', 
             height: '100%',
+            border: '2px solid red', // Temporary: Visual debug border
+            backgroundColor: 'rgba(0,255,0,0.1)', // Temporary: Visual debug background
             // overflow: 'hidden', // Removed
             // position: 'absolute' // Removed, Graph should fill its direct parent
           }}

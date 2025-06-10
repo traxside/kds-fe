@@ -13,17 +13,33 @@ export interface Bacterium {
   size: number;
 }
 
+// Interface for storing generation data for playback navigation
+export interface GenerationData {
+  generation: number;
+  bacteria: Bacterium[];
+  statistics: {
+    totalPopulation: number;
+    resistantCount: number;
+    sensitiveCount: number;
+    averageFitness: number;
+    mutationEvents: number;
+    antibioticDeaths: number;
+    naturalDeaths: number;
+    reproductions: number;
+  };
+}
+
 // Zod validation schema for simulation parameters
 export const simulationParametersSchema = z.object({
   initialPopulation: z
     .number()
     .int()
     .min(1, "Population must be at least 1")
-    .max(1000, "Population cannot exceed 1000"),
+    .max(50, "Population cannot exceed 50"),
   growthRate: z
     .number()
     .min(0.001, "Growth rate must be positive")
-    .max(1, "Growth rate cannot exceed 100%"),
+    .max(0.5, "Growth rate cannot exceed 50%"),
   antibioticConcentration: z
     .number()
     .min(0, "Concentration cannot be negative")
@@ -36,7 +52,7 @@ export const simulationParametersSchema = z.object({
     .number()
     .int()
     .min(1, "Duration must be at least 1 generation")
-    .max(1000, "Duration cannot exceed 1000 generations"),
+    .max(50, "Duration cannot exceed 50 generations"),
   petriDishSize: z
     .number()
     .int()
@@ -142,6 +158,9 @@ export interface Simulation {
 
   // Extended metadata
   metadata?: SimulationMetadata;
+  
+  // All generations data for playback navigation (optional - only present after full simulation)
+  allGenerations?: GenerationData[];
 }
 
 // Search and filter interfaces
@@ -195,35 +214,35 @@ export interface SimulationSearchResult {
 // Preset configurations for common scenarios
 export const simulationPresets = {
   default: {
-    initialPopulation: 50,
+    initialPopulation: 25,
     growthRate: 0.1,
     antibioticConcentration: 0.0,
     mutationRate: 0.02,
-    duration: 100,
+    duration: 30,
     petriDishSize: 600,
   },
   highPressure: {
-    initialPopulation: 100,
-    growthRate: 0.15,
+    initialPopulation: 40,
+    growthRate: 0.25,
     antibioticConcentration: 0.8,
     mutationRate: 0.05,
-    duration: 200,
+    duration: 25,
     petriDishSize: 600,
   },
   slowEvolution: {
-    initialPopulation: 30,
+    initialPopulation: 15,
     growthRate: 0.05,
     antibioticConcentration: 0.3,
     mutationRate: 0.001,
-    duration: 500,
+    duration: 50,
     petriDishSize: 600,
   },
   rapidMutation: {
-    initialPopulation: 75,
-    growthRate: 0.2,
+    initialPopulation: 35,
+    growthRate: 0.4,
     antibioticConcentration: 0.5,
     mutationRate: 0.08,
-    duration: 150,
+    duration: 20,
     petriDishSize: 600,
   },
 } as const;

@@ -159,8 +159,8 @@ export class SimulationEngine {
     // Resistance factor: resistant bacteria have higher survival
     const resistanceFactor = bacterium.isResistant ? 0.9 : 0.1;
 
-    // Kill constant (affects how deadly the antibiotic is)
-    const killConstant = 3.0;
+    // Kill constant (affects how deadly the antibiotic is) - reduced to be less lethal
+    const killConstant = 1.5;
 
     // Survival probability calculation
     const effectiveConcentration = concentration * (1 - resistanceFactor);
@@ -342,7 +342,7 @@ export class SimulationEngine {
   ): number {
     // Carrying capacity based on petri dish size and resources
     const area = Math.PI * (params.petriDishSize / 2) ** 2;
-    const bacteriaPerUnit = 0.001; // Density factor
+    const bacteriaPerUnit = 0.003; // Increased density factor for more bacteria growth
     return Math.floor(area * bacteriaPerUnit);
   }
 

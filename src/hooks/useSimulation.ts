@@ -3,6 +3,7 @@ import {
   Simulation,
   SimulationParametersInput,
   Bacterium,
+  GenerationData,
 } from "@/types/simulation";
 import simulationApiSimple, {
   getErrorMessage,
@@ -39,11 +40,17 @@ interface UseSimulationReturn {
   error: string | null;
   isConnected: boolean;
 
+  // Navigation state for playback
+  allGenerations: GenerationData[];
+  currentGenerationIndex: number;
+  maxGenerations: number;
+  isPlaybackMode: boolean;
+
   // Actions
   createSimulation: (
     name: string,
     parameters: SimulationParametersInput
-  ) => Promise<void>;
+  ) => Promise<Simulation>;
   startSimulation: () => Promise<void>;
   stopSimulation: () => Promise<void>;
   resetSimulation: () => Promise<void>;
@@ -54,6 +61,15 @@ interface UseSimulationReturn {
   loadSimulation: (id: string) => Promise<void>;
   clearError: () => void;
   checkConnection: () => Promise<void>;
+  runFullSimulation: () => Promise<void>;
+  runLiveSimulation: (animationSpeed?: number) => Promise<void>;
+
+  // Navigation actions for playback
+  navigateToGeneration: (generationIndex: number) => void;
+  goToNextGeneration: () => void;
+  goToPreviousGeneration: () => void;
+  goToFirstGeneration: () => void;
+  goToLastGeneration: () => void;
 
   // Performance metrics (when debouncing is enabled)
   refreshCount?: number;
@@ -82,6 +98,11 @@ export function useSimulation(
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
 
+  // Navigation state for playback
+  const [allGenerations, setAllGenerations] = useState<GenerationData[]>([]);
+  const [currentGenerationIndex, setCurrentGenerationIndex] = useState(0);
+  const [isPlaybackMode, setIsPlaybackMode] = useState(false);
+
   // Refs for cleanup and performance tracking
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchTimeRef = useRef<number>(0);
@@ -89,6 +110,37 @@ export function useSimulation(
 
   // Derived state
   const isSimulationRunning = simulation?.currentState?.isRunning ?? false;
+  const maxGenerations = allGenerations.length - 1;
+
+  // Navigation actions for playback
+  const navigateToGeneration = useCallback((generationIndex: number) => {
+    if (generationIndex >= 0 && generationIndex < allGenerations.length) {
+      setCurrentGenerationIndex(generationIndex);
+      const targetGeneration = allGenerations[generationIndex];
+      setBacteria(targetGeneration.bacteria);
+      setIsPlaybackMode(true);
+    }
+  }, [allGenerations]);
+
+  const goToNextGeneration = useCallback(() => {
+    if (currentGenerationIndex < maxGenerations) {
+      navigateToGeneration(currentGenerationIndex + 1);
+    }
+  }, [currentGenerationIndex, maxGenerations, navigateToGeneration]);
+
+  const goToPreviousGeneration = useCallback(() => {
+    if (currentGenerationIndex > 0) {
+      navigateToGeneration(currentGenerationIndex - 1);
+    }
+  }, [currentGenerationIndex, navigateToGeneration]);
+
+  const goToFirstGeneration = useCallback(() => {
+    navigateToGeneration(0);
+  }, [navigateToGeneration]);
+
+  const goToLastGeneration = useCallback(() => {
+    navigateToGeneration(maxGenerations);
+  }, [maxGenerations, navigateToGeneration]);
 
   // Error handling helper
   const handleError = useCallback((err: unknown) => {
@@ -267,15 +319,18 @@ export function useSimulation(
 
   // Create simulation with optimized error handling
   const createSimulation = useCallback(
-    async (name: string, parameters: SimulationParametersInput) => {
+    async (name: string, parameters: SimulationParametersInput): Promise<Simulation> => {
+      console.log('[useSimulation] createSimulation called with:', { name, parameters });
       setIsLoading(true);
       setError(null);
 
       try {
+        console.log('[useSimulation] About to call API createSimulation...');
         const newSimulation = await simulationApiSimple.createSimulation(
           name,
           parameters
         );
+        console.log('[useSimulation] API createSimulation successful:', newSimulation);
 
         if (enableBatching) {
           globalUpdateScheduler.schedule({
@@ -295,9 +350,13 @@ export function useSimulation(
           setIsConnected(true);
           setIsLoading(false);
         }
+        
+        // Return the created simulation
+        return newSimulation;
       } catch (_err) {
         handleError(_err);
         setIsLoading(false);
+        throw _err; // Re-throw to let caller handle the error
       }
     },
     [enableBatching, handleError]
@@ -561,6 +620,152 @@ export function useSimulation(
     };
   }, [checkConnection, enableDebouncing]); // Removed debounce from dependencies
 
+  // Function to run live simulation (step by step with animation)
+  const runLiveSimulation = useCallback(async (animationSpeed: number = 500) => {
+    if (!simulation?.id) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('[useSimulation] Starting live simulation...');
+      
+      // First get the complete simulation data
+      const response = await simulationApiSimple.runFullSimulation(simulation.id);
+      
+      let generations: GenerationData[] = [];
+      
+      if (response && typeof response === 'object') {
+        if ('simulation' in response && 'allGenerations' in response) {
+          generations = response.allGenerations as GenerationData[];
+        } else {
+          generations = (response as any).allGenerations || [];
+        }
+      }
+      
+      if (generations.length === 0) {
+        throw new Error('No generations data received');
+      }
+      
+      setAllGenerations(generations);
+      setIsPlaybackMode(true);
+      setCurrentGenerationIndex(0);
+      
+      // Start with generation 0
+      setBacteria(generations[0].bacteria);
+      
+      // Animate through generations
+      for (let i = 1; i < generations.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, animationSpeed));
+        
+        setCurrentGenerationIndex(i);
+        setBacteria(generations[i].bacteria);
+        
+        console.log(`[useSimulation] Animated to generation ${i}, bacteria count: ${generations[i].bacteria.length}`);
+      }
+      
+      console.log('[useSimulation] Live simulation animation completed');
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to run live simulation';
+      setError(errorMessage);
+      console.error('[useSimulation] Run live simulation error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [simulation?.id]);
+
+  // Function to run full simulation
+  const runFullSimulation = useCallback(async () => {
+    if (!simulation?.id) return;
+    
+    setIsLoading(true);
+    try {
+      console.log('[useSimulation] Running full simulation...');
+      const response = await simulationApiSimple.runFullSimulation(simulation.id);
+      
+      console.log('[useSimulation] Raw response:', response);
+      
+      // Handle the response structure from backend
+      let updatedSimulation: Simulation;
+      let generations: GenerationData[] = [];
+      
+      if (response && typeof response === 'object') {
+        // Check if response has simulation and allGenerations properties (backend format)
+        if ('simulation' in response && 'allGenerations' in response) {
+          updatedSimulation = response.simulation as Simulation;
+          generations = response.allGenerations as GenerationData[];
+        } else {
+          // Response is the simulation object directly
+          updatedSimulation = response as Simulation;
+          generations = (response as any).allGenerations || [];
+        }
+      } else {
+        throw new Error('Invalid response format from server');
+      }
+      
+      console.log('[useSimulation] Processed response:', {
+        simulationId: updatedSimulation.id,
+        totalGenerations: generations.length,
+        currentGeneration: updatedSimulation.currentState.generation,
+        bacteriaInFinalState: updatedSimulation.currentState.bacteria?.length || 0,
+        finalGenerationBacteria: generations.length > 0 ? generations[generations.length - 1].bacteria.length : 0,
+        sampleBacteriaFromFinalGen: generations.length > 0 ? generations[generations.length - 1].bacteria.slice(0, 3) : []
+      });
+      
+      // Update simulation state
+      setSimulation(updatedSimulation);
+      setAllGenerations(generations);
+      
+      // Set to the final generation for immediate display
+      if (generations.length > 0) {
+                const finalGeneration = generations[generations.length - 1];
+        setBacteria(finalGeneration.bacteria);
+        setCurrentGenerationIndex(generations.length - 1);
+        setIsPlaybackMode(true);
+        
+        console.log('[useSimulation] Set to final generation:', {
+          generationIndex: generations.length - 1,
+          bacteriaCount: finalGeneration.bacteria.length,
+          resistantCount: finalGeneration.bacteria.filter(b => b.isResistant).length
+        });
+        
+        // Force a small delay to ensure state updates
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log('[useSimulation] After setting bacteria state, current bacteria in hook:', bacteria.length);
+      } else {
+        // Fallback to current state bacteria if no generations data
+        setBacteria(updatedSimulation.currentState?.bacteria || []);
+        setIsPlaybackMode(false);
+        
+        console.log('[useSimulation] Fallback to current state bacteria:', {
+          bacteriaCount: updatedSimulation.currentState?.bacteria?.length || 0
+        });
+      }
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to run full simulation';
+      setError(errorMessage);
+      console.error('[useSimulation] Run full simulation error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [simulation?.id]);
+
+  // Update bacteria when simulation changes (but not in playback mode)
+  useEffect(() => {
+    if (simulation && !isPlaybackMode) {
+      setBacteria(simulation.currentState?.bacteria || []);
+      
+      // If simulation has allGenerations, set up navigation
+      if (simulation.allGenerations && simulation.allGenerations.length > 0) {
+        setAllGenerations(simulation.allGenerations);
+        setCurrentGenerationIndex(simulation.currentState.generation || 0);
+      }
+    }
+  }, [simulation, isPlaybackMode]);
+
   return {
     // State
     simulation,
@@ -569,6 +774,12 @@ export function useSimulation(
     isSimulationRunning,
     error,
     isConnected,
+
+    // Navigation state for playback
+    allGenerations,
+    currentGenerationIndex,
+    maxGenerations,
+    isPlaybackMode,
 
     // Actions
     createSimulation,
@@ -580,6 +791,15 @@ export function useSimulation(
     loadSimulation,
     clearError,
     checkConnection,
+    runFullSimulation,
+    runLiveSimulation,
+
+    // Navigation actions for playback
+    navigateToGeneration,
+    goToNextGeneration,
+    goToPreviousGeneration,
+    goToFirstGeneration,
+    goToLastGeneration,
 
     // Performance metrics (when debouncing is enabled)
     ...(enableDebouncing && {

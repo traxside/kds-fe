@@ -282,18 +282,34 @@ export const simulationApiSimple = {
         );
     },
 
-    // Step simulation forward (for manual control)
+    // Step simulation (advance one generation)
     async stepSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
         const response = await retryRequest(() =>
-            api.post<{message: string, simulation: Simulation}>(`/simulations/${id}/step`, {}, { signal })
+            api.put<{message: string, simulation: Simulation}>(`/simulations/${id}/step`, {}, { signal })
         );
         
         // Backend returns {message, simulation}, extract simulation object
+        console.log('[API] stepSimulation response:', response);
+        
         if (response && typeof response === 'object' && 'simulation' in response) {
             return response.simulation;
         }
         
+        // If response is already a Simulation object (fallback)
         return response as Simulation;
+    },
+
+    // Run complete simulation to final generation
+    async runFullSimulation(id: string, signal?: AbortSignal): Promise<any> {
+        const response = await retryRequest(() =>
+            api.put<{message: string, simulation: Simulation, allGenerations: any[]}>(`/simulations/${id}/run-full`, {}, { signal })
+        );
+        
+        // Backend returns {message, simulation, allGenerations} - return full response
+        console.log('[API] runFullSimulation response:', response);
+        
+        // Return the full response object so the hook can access both simulation and allGenerations
+        return response;
     },
 
     // Update simulation speed

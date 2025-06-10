@@ -116,7 +116,7 @@ class SimulationEngine {
     if (concentration === 0) return true;
 
     const resistanceFactor = bacterium.isResistant ? 0.9 : 0.1;
-    const killConstant = 3.0;
+    const killConstant = 1.5; // Reduced to be less lethal
     const effectiveConcentration = concentration * (1 - resistanceFactor);
     const survivalProbability = Math.exp(-killConstant * effectiveConcentration);
 
@@ -237,7 +237,7 @@ class SimulationEngine {
 
   static calculateCarryingCapacity(params) {
     const area = Math.PI * (params.petriDishSize / 2) ** 2;
-    const bacteriaPerUnit = 0.001;
+    const bacteriaPerUnit = 0.003; // Increased density factor for more bacteria growth
     return Math.floor(area * bacteriaPerUnit);
   }
 

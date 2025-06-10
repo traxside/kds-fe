@@ -93,19 +93,39 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
   const form = useForm<SimulationParametersInput>({
     resolver: zodResolver(simulationParametersSchema),
     defaultValues: {
-      initialPopulation: 50,
+      initialPopulation: 25,
       growthRate: 0.1,
       antibioticConcentration: 0.0,
       mutationRate: 0.02,
-      duration: 100,
+      duration: 30,
       petriDishSize: 600,
       ...defaultValues,
     },
   });
 
   const handleSubmit = useCallback((data: SimulationParametersInput) => {
+    console.log('[SimulationParameterForm] Form submitted with data:', data);
+    console.log('[SimulationParameterForm] Form state:', {
+      isValid: form.formState.isValid,
+      isSubmitting: form.formState.isSubmitting,
+      errors: form.formState.errors,
+    });
     onSubmit(data);
-  }, [onSubmit]);
+  }, [onSubmit, form.formState]);
+  
+  // Alternative direct submit handler
+  const handleDirectSubmit = useCallback(() => {
+    console.log('[SimulationParameterForm] ===== Direct submit called =====');
+    try {
+      const formValues = form.getValues();
+      console.log('[SimulationParameterForm] Direct submit with values:', formValues);
+      console.log('[SimulationParameterForm] About to call onSubmit...');
+      onSubmit(formValues);
+      console.log('[SimulationParameterForm] onSubmit called successfully');
+    } catch (error) {
+      console.error('[SimulationParameterForm] Error in direct submit:', error);
+    }
+  }, [form, onSubmit]);
 
   const handlePresetChange = useCallback((presetKey: string) => {
     if (presetKey in simulationPresets) {
@@ -188,10 +208,7 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
         <CardContent>
           <TooltipProvider>
             <Form {...form}>
-              <form
-                  onSubmit={form.handleSubmit(handleSubmit)}
-                  className="space-y-4"
-              >
+              <form className="space-y-4">
                 {/* One Column Layout */}
                 <div className="space-y-4">
                   {/* Left Column */}
@@ -224,7 +241,7 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
                                     >
                                       <p>
                                         Number of bacteria at simulation start
-                                        (1-1000)
+                                        (5-100)
                                       </p>
                                     </TooltipContent>
                                   </Tooltip>
@@ -251,8 +268,8 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
                                 >
                                   <Input
                                       type="range"
-                                      min="1"
-                                      max="1000"
+                                      min="5"
+                                      max="100"
                                       step="1"
                                       {...field}
                                       onChange={(e) =>
@@ -264,8 +281,8 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
                                 </div>
                               </FormControl>
                               <div className="flex justify-between text-xs" style={{ color: colors.surface.a50 }}>
-                                <span>1</span>
-                                <span>1000</span>
+                                <span>5</span>
+                                <span>100</span>
                               </div>
                               <FormMessage />
                             </FormItem>
@@ -530,7 +547,7 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
                                         }}
                                     >
                                       <p>
-                                        Number of generations to simulate (1-1000)
+                                        Number of generations to simulate (5-50)
                                       </p>
                                     </TooltipContent>
                                   </Tooltip>
@@ -557,8 +574,8 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
                                 >
                                   <Input
                                       type="range"
-                                      min="1"
-                                      max="1000"
+                                      min="5"
+                                      max="50"
                                       step="1"
                                       {...field}
                                       onChange={(e) =>
@@ -570,8 +587,8 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
                                 </div>
                               </FormControl>
                               <div className="flex justify-between text-xs" style={{ color: colors.surface.a50 }}>
-                                <span>1</span>
-                                <span>1000</span>
+                                <span>5</span>
+                                <span>50</span>
                               </div>
                               <FormMessage />
                             </FormItem>
@@ -658,9 +675,10 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
                 {/* Submit Button */}
                 <div className="pt-4">
                   <Button
-                      type="submit"
+                      type="button"
                       className="w-full border"
-                      disabled={disabled || isLoading || !form.formState.isValid}
+                      disabled={disabled || isLoading}
+                      onClick={handleDirectSubmit}
                       style={{
                         backgroundColor: `${colors.primary.a0}cc`,
                         borderColor: colors.primary.a0,
@@ -679,6 +697,7 @@ const SimulationParameterForm: React.FC<SimulationParameterFormProps> = ({
                         </>
                     )}
                   </Button>
+
                 </div>
               </form>
             </Form>

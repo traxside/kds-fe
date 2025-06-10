@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef, memo } from "react";
+import React, { useState, useCallback, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -13,19 +12,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Loader2 } from "lucide-react";
 import {
   LuPlay,
   LuPause,
   LuSkipForward,
-  LuRefreshCw,
-  LuClock,
+  LuSkipBack,
+  LuChevronsLeft,
+  LuChevronsRight,
   LuActivity,
-  LuKeyboard,
-  LuSave,
+  LuClock,
 } from "react-icons/lu";
-import { useSimulationContext } from "@/context/SimulationContext";
-import { simulationApiSimple } from "@/lib/api";
+import { useSimulationControls } from "@/context/SimulationContext";
 
 // Move colors outside component to prevent recreation on every render
 const colors = {
@@ -56,237 +53,149 @@ const colors = {
   light: "#ffffff",
 };
 
-// Format time helper function - moved outside component to prevent recreation
-function formatTime(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${minutes.toString().padStart(2, "0")}:${secs
-    .toString()
-    .padStart(2, "0")}`;
-}
-
 interface SimulationControlsProps {
   className?: string;
-  showKeyboardShortcuts?: boolean;
-  showAdvancedControls?: boolean;
 }
 
 const SimulationControls = memo<SimulationControlsProps>(function SimulationControls({
   className = "",
-  showKeyboardShortcuts = true,
-  showAdvancedControls = true,
 }: SimulationControlsProps) {
   const {
-    simulation,
+    // Navigation state
+    allGenerations,
+    currentGenerationIndex,
+    maxGenerations,
+    isPlaybackMode,
+    
+    // Navigation actions
+    navigateToGeneration,
+    goToNextGeneration,
+    goToPreviousGeneration,
+    goToFirstGeneration,
+    goToLastGeneration,
+    
+    // Control availability
+    canNavigate,
+    canGoNext,
+    canGoPrevious,
+    canGoToFirst,
+    canGoToLast,
+    
     isLoading,
-    isSimulationRunning,
-    error,
-    isConnected,
-    startSimulation,
-    stopSimulation,
-    stepSimulation,
-    resetSimulation,
-    clearError,
-  } = useSimulationContext();
+  } = useSimulationControls();
 
-  // Local state for enhanced features
-  const [simulationSpeed, setSimulationSpeed] = useState([1]);
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [showShortcuts, setShowShortcuts] = useState(false);
+  // Local state for auto-playback
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState([2]); // 1-5 scale for playback speed
+  const [autoPlayInterval, setAutoPlayInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // Refs for tracking time
-  const startTimeRef = useRef<number | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Handle generation slider change
+  const handleGenerationChange = useCallback((value: number[]) => {
+    const newGenerationIndex = value[0];
+    navigateToGeneration(newGenerationIndex);
+  }, [navigateToGeneration]);
 
-  // Create stable refs for handlers to prevent re-creation
-  const handlersRef = useRef({
-    startSimulation,
-    stopSimulation,
-    stepSimulation,
-    resetSimulation,
-  });
-
-  // Update refs when handlers change
-  useEffect(() => {
-    handlersRef.current = {
-      startSimulation,
-      stopSimulation,
-      stepSimulation,
-      resetSimulation,
-    };
-  }, [startSimulation, stopSimulation, stepSimulation, resetSimulation]);
-
-  // Handle simulation speed change
-  const handleSpeedChange = useCallback(async (value: number[]) => {
-    const newSpeed = value[0];
-    
-    // Prevent unnecessary updates if speed hasn't actually changed
-    if (newSpeed === simulationSpeed[0]) {
-      return;
-    }
-    
-    setSimulationSpeed(value);
-    
-    // Store in localStorage for persistence
-    localStorage.setItem("bacteria-simulation-speed", JSON.stringify(newSpeed));
-    
-    // Update backend if simulation exists
-    if (simulation?.id) {
-      try {
-        await simulationApiSimple.updateSimulationSpeed(simulation.id, newSpeed);
-      } catch (error) {
-        console.error("Failed to update simulation speed:", error);
-        // Optionally show error to user or revert the slider
+  // Handle auto-playback
+  const handleAutoPlayToggle = useCallback(() => {
+    if (isAutoPlaying) {
+      // Stop auto-play
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+        setAutoPlayInterval(null);
       }
-    }
-  }, [simulation?.id, simulationSpeed]);
-
-  // Handle auto-save toggle
-  const handleAutoSaveToggle = useCallback((enabled: boolean) => {
-    setAutoSaveEnabled(enabled);
-    localStorage.setItem(
-      "bacteria-simulation-autosave",
-      JSON.stringify(enabled)
-    );
-  }, []);
-
-  // Memoized action handlers
-  const handlePlayPause = useCallback(async () => {
-    if (isSimulationRunning) {
-      if (!isLoading) {
-        await stopSimulation();
-      }
+      setIsAutoPlaying(false);
     } else {
-      if (simulation && !isLoading) {
-        await startSimulation();
-      }
-    }
-  }, [isSimulationRunning, isLoading, simulation, startSimulation, stopSimulation]);
-
-  const handleStep = useCallback(async () => {
-    if (simulation && !isLoading && !isSimulationRunning) {
-      await stepSimulation();
-    }
-  }, [simulation, isLoading, isSimulationRunning, stepSimulation]);
-
-  const handleReset = useCallback(async () => {
-    if (simulation && !isLoading) {
-      await resetSimulation();
-    }
-  }, [simulation, isLoading, resetSimulation]);
-
-  const handleToggleShortcuts = useCallback(() => {
-    setShowShortcuts(prev => !prev);
-  }, []);
-
-  // Load preferences from localStorage on mount and sync with simulation
-  useEffect(() => {
-    const savedSpeed = localStorage.getItem("bacteria-simulation-speed");
-    const savedAutoSave = localStorage.getItem("bacteria-simulation-autosave");
-
-    // Use simulation speed if available, otherwise use saved/default
-    const currentSpeed = simulation?.currentState?.simulationSpeed;
-    if (currentSpeed && currentSpeed !== simulationSpeed[0]) {
-      setSimulationSpeed([currentSpeed]);
-    } else if (savedSpeed && !currentSpeed && simulationSpeed[0] === 1) {
-      // Only set from localStorage if we're still at default value
-      setSimulationSpeed([JSON.parse(savedSpeed)]);
-    }
-    
-    if (savedAutoSave) {
-      setAutoSaveEnabled(JSON.parse(savedAutoSave));
-    }
-  }, [simulation?.currentState?.simulationSpeed]);
-
-  // Track elapsed time
-  useEffect(() => {
-    if (isSimulationRunning) {
-      startTimeRef.current = Date.now();
-      intervalRef.current = setInterval(() => {
-        if (startTimeRef.current) {
-          const elapsed = Math.floor(
-            (Date.now() - startTimeRef.current) / 1000
-          );
-          setElapsedTime(elapsed);
-        }
-      }, 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      if (!simulation) {
-        setElapsedTime(0);
-      }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isSimulationRunning, simulation]);
-
-  // Memoized keyboard event handler with stable dependencies
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // Don't trigger shortcuts if user is typing in an input
-    if (
-      e.target instanceof HTMLInputElement ||
-      e.target instanceof HTMLTextAreaElement
-    ) {
-      return;
-    }
-
-    switch (e.key.toLowerCase()) {
-      case " ":
-      case "spacebar":
-        e.preventDefault();
-        if (isSimulationRunning) {
-          handlersRef.current.stopSimulation();
-        } else if (simulation && !isLoading) {
-          handlersRef.current.startSimulation();
-        }
-        break;
-      case "n":
-      case "arrowright":
-        e.preventDefault();
-        if (simulation && !isLoading && !isSimulationRunning) {
-          handlersRef.current.stepSimulation();
-        }
-        break;
-      case "r":
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          if (simulation && !isLoading) {
-            handlersRef.current.resetSimulation();
+      // Start auto-play
+      if (canNavigate && currentGenerationIndex < maxGenerations) {
+        const speed = playbackSpeed[0];
+        const intervalMs = Math.max(100, 1000 / speed); // Speed 1 = 1s, Speed 5 = 200ms
+        
+        const interval = setInterval(() => {
+          if (currentGenerationIndex >= maxGenerations) {
+            // Reached the end, stop auto-play
+            clearInterval(interval);
+            setAutoPlayInterval(null);
+            setIsAutoPlaying(false);
+            return;
           }
+          goToNextGeneration();
+        }, intervalMs);
+        
+        setAutoPlayInterval(interval);
+        setIsAutoPlaying(true);
+      }
+    }
+  }, [isAutoPlaying, autoPlayInterval, canNavigate, currentGenerationIndex, maxGenerations, playbackSpeed, goToNextGeneration]);
+
+  // Handle playback speed change
+  const handlePlaybackSpeedChange = useCallback((value: number[]) => {
+    setPlaybackSpeed(value);
+    
+    // If auto-playing, restart with new speed
+    if (isAutoPlaying && autoPlayInterval) {
+      clearInterval(autoPlayInterval);
+      const speed = value[0];
+      const intervalMs = Math.max(100, 1000 / speed);
+      
+      const interval = setInterval(() => {
+        if (currentGenerationIndex >= maxGenerations) {
+          clearInterval(interval);
+          setAutoPlayInterval(null);
+          setIsAutoPlaying(false);
+          return;
         }
-        break;
-      case "?":
-        e.preventDefault();
-        setShowShortcuts(prev => !prev);
-        break;
+        goToNextGeneration();
+      }, intervalMs);
+      
+      setAutoPlayInterval(interval);
     }
-  }, [isSimulationRunning, simulation, isLoading]);
+  }, [isAutoPlaying, autoPlayInterval, currentGenerationIndex, maxGenerations, goToNextGeneration]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    if (showKeyboardShortcuts) {
-      document.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.removeEventListener("keydown", handleKeyDown);
-      };
-    }
-  }, [showKeyboardShortcuts, handleKeyDown]);
+  // Clean up interval on unmount
+  React.useEffect(() => {
+    return () => {
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+      }
+    };
+  }, [autoPlayInterval]);
 
-  const currentGeneration = simulation?.currentState?.generation || 0;
-  const canStart =
-    !isLoading && simulation && !isSimulationRunning && isConnected;
-  const canStop = !isLoading && simulation && isSimulationRunning;
-  const canStep =
-    !isLoading && simulation && !isSimulationRunning && isConnected;
-  const canReset = !isLoading && simulation && isConnected;
+  if (!isPlaybackMode || allGenerations.length === 0) {
+    return (
+      <Card
+        className={`w-full border ${className}`}
+        style={{
+          backgroundColor: `${colors.surface.a10}cc`,
+          backdropFilter: "blur(12px)",
+          borderColor: colors.surface.a20,
+        }}
+      >
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center">
+            <LuActivity className="h-5 w-5 mr-2" style={{ color: colors.primary.a0 }} />
+            <span style={{ color: colors.light }}>Simulation Playback</span>
+            <Badge
+              variant="outline"
+              className="text-xs border ml-auto"
+              style={{
+                backgroundColor: `${colors.surface.a20}80`,
+                borderColor: colors.surface.a30,
+                color: colors.light
+              }}
+            >
+              No Data
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4" style={{ color: colors.surface.a50 }}>
+            <LuClock className="mx-auto h-8 w-8 mb-2" />
+            <p>Run a simulation to enable playback controls</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <TooltipProvider>
@@ -299,134 +208,35 @@ const SimulationControls = memo<SimulationControlsProps>(function SimulationCont
         }}
       >
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between text-lg">
-            <div className="flex items-center space-x-2">
-              <LuActivity
-                className="h-5 w-5"
-                style={{ color: colors.primary.a0 }}
-              />
-              <span style={{ color: colors.light }}>Simulation Controls</span>
-            </div>
-            {showKeyboardShortcuts && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleToggleShortcuts}
-                    className="h-6 w-6 p-0"
-                  >
-                    <LuKeyboard className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Show keyboard shortcuts</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
+          <CardTitle className="text-lg flex items-center">
+            <LuActivity className="h-5 w-5 mr-2" style={{ color: colors.primary.a0 }} />
+            <span style={{ color: colors.light }}>Simulation Playback</span>
+            <Badge
+              variant="outline"
+              className="text-xs border ml-auto"
+              style={{
+                backgroundColor: `${colors.surface.a20}80`,
+                borderColor: colors.surface.a30,
+                color: colors.light
+              }}
+            >
+              Generation {currentGenerationIndex} / {maxGenerations}
+            </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Main Control Buttons */}
-          <div className="flex space-x-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={handlePlayPause}
-                  disabled={!canStart && !canStop}
-                  variant={isSimulationRunning ? "destructive" : "default"}
-                  size="sm"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : isSimulationRunning ? (
-                    <LuPause className="h-4 w-4 mr-2" />
-                  ) : (
-                    <LuPlay className="h-4 w-4 mr-2" />
-                  )}
-                  {isSimulationRunning ? "Pause" : "Start"}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>
-                  {isSimulationRunning
-                    ? "Pause simulation (Space)"
-                    : "Start simulation (Space)"}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={handleStep}
-                  disabled={!canStep}
-                  variant="outline"
-                  size="sm"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <LuSkipForward className="h-4 w-4 mr-2" />
-                  )}
-                  Step
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Advance one generation (N or →)</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={handleReset}
-                  disabled={!canReset}
-                  variant="outline"
-                  size="sm"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <LuRefreshCw className="h-4 w-4 mr-2" />
-                  )}
-                  Reset
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Reset simulation (Ctrl+R)</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-
-          {/* Status Indicators */}
-          <div className="flex justify-between items-center text-sm">
-            <div className="flex items-center space-x-2">
-              <LuActivity className="h-4 w-4" />
-              <span className="font-medium">Generation:</span>
-              <Badge variant="outline">{currentGeneration}</Badge>
-            </div>
-            <div className="flex items-center space-x-2">
-              <LuClock className="h-4 w-4" />
-              <span className="font-medium">Time:</span>
-              <span className="font-mono">{formatTime(elapsedTime)}</span>
-            </div>
-          </div>
-
-          {/* Advanced Controls */}
-          {showAdvancedControls && (
-            <>
-              {/* Speed Control */}
+        <CardContent>
+          <div className="space-y-4">
+            {/* Generation Navigation Slider */}
+            <div className="space-y-2">
+              <Label 
+                className="text-sm font-medium flex items-center"
+                style={{ color: colors.light }}
+              >
+                <LuClock className="h-4 w-4 mr-2" style={{ color: colors.primary.a0 }} />
+                Generation Navigation
+              </Label>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="speed-slider" className="text-sm font-medium">
-                    Simulation Speed
-                  </Label>
-                  <span className="text-sm text-muted-foreground">
-                    {simulationSpeed[0]}x
-                  </span>
-                </div>
-                <div 
+                <div
                   className="relative p-1 rounded-lg border"
                   style={{
                     backgroundColor: `${colors.surface.a20}40`,
@@ -434,85 +244,227 @@ const SimulationControls = memo<SimulationControlsProps>(function SimulationCont
                   }}
                 >
                   <Slider
-                    id="speed-slider"
-                    min={1}
-                    max={10}
+                    value={[currentGenerationIndex]}
+                    onValueChange={handleGenerationChange}
+                    max={maxGenerations}
+                    min={0}
                     step={1}
-                    value={simulationSpeed}
-                    onValueChange={handleSpeedChange}
-                    disabled={isLoading}
-                    className="w-full [&>span]:bg-transparent [&>span>span]:bg-primary [&>span>span]:h-1.5 [&>button]:border-primary [&>button]:bg-primary [&>button]:h-4 [&>button]:w-4"
+                    disabled={isLoading || !canNavigate}
+                    className="w-full"
                   />
                 </div>
-              </div>
-
-              {/* Auto-save Toggle */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <LuSave className="h-4 w-4" />
-                  <Label htmlFor="auto-save" className="text-sm font-medium">
-                    Auto-save simulation
-                  </Label>
+                <div className="flex justify-between text-xs" style={{ color: colors.surface.a50 }}>
+                  <span>0</span>
+                  <span>{Math.floor(maxGenerations / 2)}</span>
+                  <span>{maxGenerations}</span>
                 </div>
-                <Switch
-                  id="auto-save"
-                  checked={autoSaveEnabled}
-                  onCheckedChange={handleAutoSaveToggle}
-                  disabled={isLoading}
-                />
               </div>
-            </>
-          )}
+            </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="p-2 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive">
-              {error}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearError}
-                className="ml-2 h-auto p-0 text-destructive"
+            {/* Playback Controls */}
+            <div className="flex items-center justify-center space-x-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToFirstGeneration}
+                    disabled={isLoading || !canGoToFirst}
+                    className="h-8 w-8 p-0 border"
+                    style={{
+                      backgroundColor: `${colors.surface.a20}80`,
+                      backdropFilter: "blur(8px)",
+                      borderColor: colors.surface.a30,
+                      color: colors.light
+                    }}
+                  >
+                    <LuChevronsLeft className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  className="border"
+                  style={{
+                    backgroundColor: `${colors.surface.a10}f0`,
+                    backdropFilter: "blur(12px)",
+                    borderColor: colors.surface.a20,
+                    color: colors.light
+                  }}
+                >
+                  <p>Go to first generation</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToPreviousGeneration}
+                    disabled={isLoading || !canGoPrevious}
+                    className="h-8 w-8 p-0 border"
+                    style={{
+                      backgroundColor: `${colors.surface.a20}80`,
+                      backdropFilter: "blur(8px)",
+                      borderColor: colors.surface.a30,
+                      color: colors.light
+                    }}
+                  >
+                    <LuSkipBack className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  className="border"
+                  style={{
+                    backgroundColor: `${colors.surface.a10}f0`,
+                    backdropFilter: "blur(12px)",
+                    borderColor: colors.surface.a20,
+                    color: colors.light
+                  }}
+                >
+                  <p>Previous generation</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAutoPlayToggle}
+                    disabled={isLoading || !canNavigate}
+                    className="h-8 w-12 border"
+                    style={{
+                      backgroundColor: `${colors.surface.a20}80`,
+                      backdropFilter: "blur(8px)",
+                      borderColor: colors.surface.a30,
+                      color: colors.light
+                    }}
+                  >
+                    {isAutoPlaying ? (
+                      <LuPause className="h-3 w-3" />
+                    ) : (
+                      <LuPlay className="h-3 w-3" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  className="border"
+                  style={{
+                    backgroundColor: `${colors.surface.a10}f0`,
+                    backdropFilter: "blur(12px)",
+                    borderColor: colors.surface.a20,
+                    color: colors.light
+                  }}
+                >
+                  <p>{isAutoPlaying ? "Pause auto-playback" : "Start auto-playback"}</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToNextGeneration}
+                    disabled={isLoading || !canGoNext}
+                    className="h-8 w-8 p-0 border"
+                    style={{
+                      backgroundColor: `${colors.surface.a20}80`,
+                      backdropFilter: "blur(8px)",
+                      borderColor: colors.surface.a30,
+                      color: colors.light
+                    }}
+                  >
+                    <LuSkipForward className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  className="border"
+                  style={{
+                    backgroundColor: `${colors.surface.a10}f0`,
+                    backdropFilter: "blur(12px)",
+                    borderColor: colors.surface.a20,
+                    color: colors.light
+                  }}
+                >
+                  <p>Next generation</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToLastGeneration}
+                    disabled={isLoading || !canGoToLast}
+                    className="h-8 w-8 p-0 border"
+                    style={{
+                      backgroundColor: `${colors.surface.a20}80`,
+                      backdropFilter: "blur(8px)",
+                      borderColor: colors.surface.a30,
+                      color: colors.light
+                    }}
+                  >
+                    <LuChevronsRight className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  className="border"
+                  style={{
+                    backgroundColor: `${colors.surface.a10}f0`,
+                    backdropFilter: "blur(12px)",
+                    borderColor: colors.surface.a20,
+                    color: colors.light
+                  }}
+                >
+                  <p>Go to last generation</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+
+            {/* Playback Speed Control */}
+            <div className="space-y-2">
+              <Label 
+                className="text-sm font-medium flex items-center"
+                style={{ color: colors.light }}
               >
-                Clear
-              </Button>
+                <LuActivity className="h-4 w-4 mr-2" style={{ color: colors.primary.a0 }} />
+                Playback Speed
+              </Label>
+              <div className="space-y-2">
+                <div
+                  className="relative p-1 rounded-lg border"
+                  style={{
+                    backgroundColor: `${colors.surface.a20}40`,
+                    borderColor: colors.surface.a30,
+                  }}
+                >
+                  <Slider
+                    value={playbackSpeed}
+                    onValueChange={handlePlaybackSpeedChange}
+                    max={5}
+                    min={1}
+                    step={1}
+                    disabled={isLoading}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex justify-between text-xs" style={{ color: colors.surface.a50 }}>
+                  <span>Slow</span>
+                  <span>Fast</span>
+                </div>
+              </div>
             </div>
-          )}
 
-          {/* Keyboard Shortcuts Help */}
-          {showShortcuts && showKeyboardShortcuts && (
-            <div className="mt-4 p-3 bg-muted rounded-lg text-xs space-y-1">
-              <div className="font-medium text-sm mb-2">
-                Keyboard Shortcuts:
-              </div>
-              <div className="grid grid-cols-2 gap-1">
-                <div>
-                  <kbd className="px-1 py-0.5 bg-background rounded text-xs">
-                    Space
-                  </kbd>{" "}
-                  Play/Pause
-                </div>
-                <div>
-                  <kbd className="px-1 py-0.5 bg-background rounded text-xs">
-                    N
-                  </kbd>{" "}
-                  Step forward
-                </div>
-                <div>
-                  <kbd className="px-1 py-0.5 bg-background rounded text-xs">
-                    Ctrl+R
-                  </kbd>{" "}
-                  Reset
-                </div>
-                <div>
-                  <kbd className="px-1 py-0.5 bg-background rounded text-xs">
-                    ?
-                  </kbd>{" "}
-                  Toggle help
-                </div>
-              </div>
+            {/* Current Generation Info */}
+            <div className="text-center text-xs" style={{ color: colors.surface.a50 }}>
+              <p>Viewing Generation {currentGenerationIndex} of {maxGenerations}</p>
+              {isAutoPlaying && (
+                <p style={{ color: colors.primary.a30 }} className="mt-1">Auto-playing...</p>
+              )}
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
     </TooltipProvider>
