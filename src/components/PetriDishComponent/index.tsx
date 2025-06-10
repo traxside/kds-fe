@@ -231,6 +231,32 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       }
     }));
 
+    // Validate for duplicate IDs and log error if found
+    const nodeIds = nodes.map(n => n.id);
+    const uniqueNodeIds = new Set(nodeIds);
+    if (nodeIds.length !== uniqueNodeIds.size) {
+      const duplicates = nodeIds.filter((id, index) => nodeIds.indexOf(id) !== index);
+      console.error('Duplicate node IDs detected:', duplicates);
+      console.error('Full node ID list:', nodeIds);
+      console.error('Original bacteria IDs:', displayBacteria.map(b => b.id));
+      
+      // Create completely new unique IDs for all nodes to prevent vis-network error
+      const fixedNodes = nodes.map((node, index) => ({
+        ...node,
+        id: `fixed-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`,
+        originalData: {
+          ...node.originalData,
+          id: `fixed-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`
+        }
+      }));
+      
+      console.log('Fixed nodes with new IDs, count:', fixedNodes.length);
+      return {
+        nodes: fixedNodes,
+        edges: [], // Skip edges to prevent further issues
+      };
+    }
+
     // Create edges for parent-child relationships
     const edges: { from: string; to: string; arrows?: string }[] = [];
     const displayedNodeIds = new Set(displayBacteria.map(b => b.id));
@@ -265,10 +291,12 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   // const configureForces = useCallback(() => { ... });
   // useEffect(() => { /* configureForces logic */ }, [configureForces]);
 
-  // Define a completely stable key that only changes when component remounts
-  const stableKey = React.useMemo(() => {
-    return `graph-stable-${Date.now()}`;
-  }, []); // Empty dependency array means this only runs once
+  // Define a key that changes when bacteria data changes to force Graph remount
+  const graphKey = React.useMemo(() => {
+    const bacteriaCount = bacteria?.length || 0;
+    const bacteriaHash = bacteria?.slice(0, 5).map(b => b.id).join('-') || 'empty';
+    return `graph-${bacteriaCount}-${bacteriaHash}-${Date.now()}`;
+  }, [bacteria]);
 
   // Define options for react-graph-vis
   const options = React.useMemo(() => ({
@@ -349,9 +377,9 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
     },
     layout: {
       improvedLayout: true,
-      randomSeed: 42, // Consistent layout
+      randomSeed: Math.floor(Math.random() * 1000), // Different seed each time
     }
-  }), []); // No dependencies - this should be completely static
+  }), []);
 
   // Define events for react-graph-vis
   const events = React.useMemo(() => ({
@@ -502,7 +530,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
         }}
       >
         <Graph
-          key={stableKey}
+          key={graphKey}
           graph={graphDataForVis}
           options={options as any} // eslint-disable-line @typescript-eslint/no-explicit-any
           events={events}

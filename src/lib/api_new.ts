@@ -176,9 +176,19 @@ export const simulationApiSimple = {
         parameters: SimulationParametersInput,
         signal?: AbortSignal
     ): Promise<Simulation> {
-        return retryRequest(() =>
-            api.post<Simulation>("/simulations", { name, parameters }, { signal })
+        const response = await retryRequest(() =>
+            api.post<{message: string, simulation: Simulation}>("/simulations", { name, parameters }, { signal })
         );
+        
+        // Backend returns {message, simulation}, extract simulation object
+        console.log('[API] createSimulation response:', response);
+        
+        if (response && typeof response === 'object' && 'simulation' in response) {
+            return response.simulation;
+        }
+        
+        // If response is already a Simulation object (fallback)
+        return response as Simulation;
     },
 
     // Get all simulations
@@ -190,9 +200,19 @@ export const simulationApiSimple = {
 
     // Get a specific simulation by ID
     async getSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
-        return retryRequest(() =>
-            api.get<Simulation>(`/simulations/${id}`, { signal })
+        const response = await retryRequest(() =>
+            api.get<{simulation: Simulation}>(`/simulations/${id}`, { signal })
         );
+        
+        // Backend returns {simulation}, extract simulation object
+        console.log('[API] getSimulation response:', response);
+        
+        if (response && typeof response === 'object' && 'simulation' in response) {
+            return response.simulation;
+        }
+        
+        // If response is already a Simulation object (fallback)
+        return response as Simulation;
     },
 
     // Update simulation parameters
@@ -201,30 +221,58 @@ export const simulationApiSimple = {
         parameters: Partial<SimulationParametersInput>,
         signal?: AbortSignal
     ): Promise<Simulation> {
-        return retryRequest(() =>
-            api.put<Simulation>(`/simulations/${id}`, { parameters }, { signal })
+        const response = await retryRequest(() =>
+            api.put<{message: string, simulation: Simulation}>(`/simulations/${id}`, { parameters }, { signal })
         );
+        
+        // Backend returns {message, simulation}, extract simulation object
+        if (response && typeof response === 'object' && 'simulation' in response) {
+            return response.simulation;
+        }
+        
+        return response as Simulation;
     },
 
     // Start a simulation
     async startSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
-        return retryRequest(() =>
-            api.put<Simulation>(`/simulations/${id}/start`, {}, { signal })
+        const response = await retryRequest(() =>
+            api.put<{message: string, simulation: Simulation}>(`/simulations/${id}/start`, {}, { signal })
         );
+        
+        // Backend returns {message, simulation}, extract simulation object
+        if (response && typeof response === 'object' && 'simulation' in response) {
+            return response.simulation;
+        }
+        
+        return response as Simulation;
     },
 
     // Stop a simulation
     async stopSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
-        return retryRequest(() =>
-            api.post<Simulation>(`/simulations/${id}/stop`, {}, { signal })
+        const response = await retryRequest(() =>
+            api.post<{message: string, simulation: Simulation}>(`/simulations/${id}/stop`, {}, { signal })
         );
+        
+        // Backend returns {message, simulation}, extract simulation object
+        if (response && typeof response === 'object' && 'simulation' in response) {
+            return response.simulation;
+        }
+        
+        return response as Simulation;
     },
 
     // Reset a simulation
     async resetSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
-        return retryRequest(() =>
-            api.post<Simulation>(`/simulations/${id}/reset`, {}, { signal })
+        const response = await retryRequest(() =>
+            api.post<{message: string, simulation: Simulation}>(`/simulations/${id}/reset`, {}, { signal })
         );
+        
+        // Backend returns {message, simulation}, extract simulation object
+        if (response && typeof response === 'object' && 'simulation' in response) {
+            return response.simulation;
+        }
+        
+        return response as Simulation;
     },
 
     // Delete a simulation
@@ -236,9 +284,16 @@ export const simulationApiSimple = {
 
     // Step simulation forward (for manual control)
     async stepSimulation(id: string, signal?: AbortSignal): Promise<Simulation> {
-        return retryRequest(() =>
-            api.post<Simulation>(`/simulations/${id}/step`, {}, { signal })
+        const response = await retryRequest(() =>
+            api.post<{message: string, simulation: Simulation}>(`/simulations/${id}/step`, {}, { signal })
         );
+        
+        // Backend returns {message, simulation}, extract simulation object
+        if (response && typeof response === 'object' && 'simulation' in response) {
+            return response.simulation;
+        }
+        
+        return response as Simulation;
     },
 
     // Update simulation speed
@@ -247,9 +302,16 @@ export const simulationApiSimple = {
         speed: number,
         signal?: AbortSignal
     ): Promise<Simulation> {
-        return retryRequest(() =>
-            api.put<Simulation>(`/simulations/${id}/speed`, { speed }, { signal })
+        const response = await retryRequest(() =>
+            api.put<{message: string, simulation: Simulation}>(`/simulations/${id}/speed`, { speed }, { signal })
         );
+        
+        // Backend returns {message, simulation}, extract simulation object
+        if (response && typeof response === 'object' && 'simulation' in response) {
+            return response.simulation;
+        }
+        
+        return response as Simulation;
     },
 
     // Health check

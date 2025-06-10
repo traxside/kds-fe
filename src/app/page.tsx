@@ -8,8 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
-// Icons
 import {
   LuPlay,
   LuPause,
@@ -26,8 +24,6 @@ import {
   LuSave,
   LuFolderOpen,
 } from "react-icons/lu";
-
-
 import PetriDish from "@/components/PetriDishComponent";
 import SimulationParameterForm from "@/components/SimulationParameterForm";
 import StatisticsPanel from "@/components/StatisticsPanel";
@@ -41,7 +37,7 @@ import {
 } from "@/components/ConnectionStatus";
 import { useSimulationContext } from "@/context/SimulationContext";
 import { Bacterium, SimulationParametersInput, Simulation } from "@/types/simulation";
-import { simulationApiSimple } from "@/lib/api_new";
+import { simulationApiSimple } from "@/lib/api";
 import Image from "next/image";
 import { BacteriaLegend } from "@/components/BacteriaLegend";
 
@@ -75,64 +71,43 @@ const colors = {
 };
 
 // Generate sample bacteria function moved outside to prevent recreation
-const generateSampleBacteria = (simulation?: Simulation): Bacterium[] => {
-  if (!simulation?.currentState?.bacteria) {
-    // Return empty array if no simulation data
-    return [];
-  }
-  
+const generateSampleBacteria = (): Bacterium[] => {
   const sampleBacteria: Bacterium[] = [];
-  const bacteriaObj = simulation.currentState.bacteria;
-  console.log('Bacteria data:', bacteriaObj);
-  
-  for (let i = 0; i < bacteriaObj.length; i++) {
-    const currentBacterium = bacteriaObj[i];
-    const bacterium: Bacterium = currentBacterium;
-    sampleBacteria.push(bacterium);
-  }
-  
-  console.log(sampleBacteria);
-  return sampleBacteria;
-};
-
-// Generate placeholder bacteria for empty state
-const generatePlaceholderBacteria = (): Bacterium[] => {
-  const placeholderBacteria: Bacterium[] = [];
   const centerX = 300;
   const centerY = 300;
-  const maxRadius = 100;
+  const maxRadius = 250;
 
-  // Generate a small sample of bacteria to show what the simulation would look like
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 50; i++) {
     const angle = Math.random() * 2 * Math.PI;
     const radius = Math.random() * maxRadius;
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius;
-    const isResistant = Math.random() > 0.8; // 20% chance of being resistant
+    const x = centerX + radius * Math.cos(angle);
+    const y = centerY + radius * Math.sin(angle);
+    const isResistant = Math.random() < 0.2;
 
     const bacterium: Bacterium = {
-      id: `placeholder-${i}`,
+      id: `bacteria-${i}`,
       x,
       y,
       isResistant,
-      fitness: Math.random() * 0.5 + 0.5, // Random fitness between 0.5-1.0
+      fitness: 0.5 + Math.random() * 0.5,
       age: Math.floor(Math.random() * 10),
-      generation: 0,
-      parentId: undefined,
-      color: isResistant ? "#ff4444" : "#44ff44",
-      size: Math.random() * 2 + 3, // Random size between 3-5
+      generation: Math.floor(Math.random() * 5),
+      parentId:
+        i > 10 ? `bacteria-${Math.floor(Math.random() * 10)}` : undefined,
+      color: isResistant ? "#ef4444" : "#22c55e",
+      size: 3 + Math.random() * 3,
     };
 
-    placeholderBacteria.push(bacterium);
+    sampleBacteria.push(bacterium);
   }
 
-  return placeholderBacteria;
+  return sampleBacteria;
 };
 
 export default function Dashboard() {
   // Use the simulation context instead of the direct hook
   const {
-    // simulation,
+    simulation,
     bacteria,
     isLoading,
     isSimulationRunning,
@@ -156,11 +131,10 @@ export default function Dashboard() {
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [savedSimulations, setSavedSimulations] = useState<Simulation[]>([]);
   const [savingSimulation, setSavingSimulation] = useState(false);
-  const [simulation, setSimulation] = useState<Simulation | undefined>(undefined);
-  
-  // Initialize with placeholder bacteria to show what simulation would look like
+
+  // Initialize sample data on mount
   useEffect(() => {
-    setSampleBacteria(generatePlaceholderBacteria());
+    setSampleBacteria(generateSampleBacteria());
   }, []);
 
   // Load saved simulations when load modal opens
@@ -183,31 +157,29 @@ export default function Dashboard() {
   const handleSimulationSubmit = useCallback(
     async (parameters: SimulationParametersInput) => {
       try {
-        const response = await simulationApiSimple.createSimulation(simulationName, parameters);
-        console.log("Simulation created successfully: ", response);
+        // Clear local sample bacteria since we're creating a real simulation
+        setSampleBacteria([]);
         
-        // Update petri dish with actual simulation data
-        setSampleBacteria(generateSampleBacteria(response));
-        setSimulation(response);
+        // Create simulation in context - this will handle all the state management
+        await createSimulation(simulationName, parameters);
+        
+        console.log("Simulation created successfully and synced with context");
       } catch (err) {
         console.error("Failed to create simulation:", err);
+        // On error, keep sample bacteria empty so context can handle it
+        setSampleBacteria([]);
       }
     },
     [createSimulation, simulationName]
   );
 
   const handlePlayPause = useCallback(async () => {
-    console.log("Button clicked");
-    console.log(isSimulationRunning);
-    console.log(simulation);
     try {
       if (isSimulationRunning) {
         await stopSimulation();
       } else {
         if (simulation) {
-          console.log("Entering the simulation conditional");
-          const response = await simulationApiSimple.startSimulation(simulation.id);
-          console.log(response);
+          await startSimulation();
         }
       }
     } catch (err) {
@@ -219,11 +191,9 @@ export default function Dashboard() {
     try {
       if (simulation) {
         await resetSimulation();
-        // After reset, regenerate bacteria from updated simulation
-        setSampleBacteria(generateSampleBacteria(simulation));
       } else {
-        // If no simulation exists, show placeholder bacteria
-        setSampleBacteria(generatePlaceholderBacteria());
+        // If no simulation exists, just regenerate sample bacteria
+        setSampleBacteria(generateSampleBacteria());
       }
     } catch (err) {
       console.error("Failed to reset simulation:", err);
@@ -282,8 +252,30 @@ export default function Dashboard() {
 
   // Memoized computed values
   const displayBacteria = useMemo(() => {
-    return bacteria.length > 0 ? bacteria : sampleBacteria;
-  }, [bacteria, sampleBacteria]);
+    console.log('displayBacteria calculation:', {
+      bacteriaFromContext: bacteria.length,
+      sampleBacteria: sampleBacteria.length,
+      simulationExists: !!simulation,
+      simulationId: simulation?.id,
+      willUse: bacteria.length > 0 ? 'context bacteria' : 'sample bacteria'
+    });
+    
+    // Prioritize bacteria from context (real simulation data)
+    if (bacteria.length > 0) {
+      console.log('Using bacteria from context (real simulation)');
+      return bacteria;
+    }
+    
+    // Fallback to sample bacteria for preview
+    if (sampleBacteria.length > 0) {
+      console.log('Using sample bacteria for preview');
+      return sampleBacteria;
+    }
+    
+    // Empty state
+    console.log('No bacteria to display');
+    return [];
+  }, [bacteria, sampleBacteria, simulation]);
 
   // Use simulation statistics from backend when available, otherwise calculate from bacteria
   const currentStats = useMemo(() => {
@@ -458,7 +450,7 @@ export default function Dashboard() {
             {/* Petri Dish Visualization */}
             <div className="lg:col-span-2">
               <Card
-                className="h-full border overflow-hidden"
+                className="h-full border"
                 style={{
                   backgroundColor: `${colors.surface.a10}cc`,
                   backdropFilter: "blur(12px)",
@@ -609,9 +601,9 @@ export default function Dashboard() {
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="h-[calc(100%-5rem)] overflow-hidden">
+                <CardContent className="h-[calc(100%-5rem)]">
                   <div
-                    className="relative w-full h-full rounded-xl border"
+                    className="relative w-full h-full rounded-xl border flex items-center justify-center"
                     style={{
                       backgroundColor: colors.surfaceTonal.a0,
                       borderColor: colors.surfaceTonal.a20,
@@ -645,6 +637,8 @@ export default function Dashboard() {
 
                     <PetriDish
                       bacteria={displayBacteria}
+                      width={600}
+                      height={600}
                       isSimulationRunning={isSimulationRunning}
                       maxDisplayNodes={1000}
                       enableSpatialSampling={true}
@@ -652,47 +646,6 @@ export default function Dashboard() {
                         console.log("Clicked bacterium:", bacterium);
                       }}
                     />
-                    
-                    {/* No Simulation State Overlay */}
-                    {!simulation && (
-                      <div
-                        className="absolute inset-0 rounded-xl flex items-center justify-center z-20"
-                        style={{
-                          backgroundColor: `${colors.surface.a0}90`,
-                          backdropFilter: "blur(12px)",
-                        }}
-                      >
-                        <div className="text-center max-w-md p-6">
-                          <LuFlaskConical 
-                            className="h-16 w-16 mx-auto mb-4 opacity-50"
-                            style={{ color: colors.primary.a0 }}
-                          />
-                          <h3 
-                            className="text-xl font-medium mb-2"
-                            style={{ color: colors.light }}
-                          >
-                            Start Your First Simulation
-                          </h3>
-                          <p 
-                            className="text-sm mb-4 leading-relaxed"
-                            style={{ color: colors.surface.a50 }}
-                          >
-                            Set the simulation parameters using the controls on the right, then click "Start Simulation" to explore bacterial evolution and antibiotic resistance.
-                          </p>
-                          <div 
-                            className="text-xs px-3 py-2 rounded-lg inline-block"
-                            style={{ 
-                              backgroundColor: `${colors.primary.a0}20`,
-                              color: colors.primary.a20,
-                              border: `1px solid ${colors.primary.a0}30`
-                            }}
-                          >
-                            The bacteria shown illustrate key simulation behaviors.
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
                     {!isConnected && displayBacteria === sampleBacteria && (
                       <div
                         className="absolute bottom-4 left-4 px-3 py-2 rounded-lg text-sm border"
