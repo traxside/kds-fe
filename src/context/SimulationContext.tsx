@@ -29,7 +29,7 @@ interface SimulationContextType {
   createSimulation: (
     name: string,
     parameters: SimulationParametersInput
-  ) => Promise<void>;
+  ) => Promise<Simulation>;
   loadSimulation: (id: string) => Promise<void>;
   startSimulation: () => Promise<void>;
   stopSimulation: () => Promise<void>;
