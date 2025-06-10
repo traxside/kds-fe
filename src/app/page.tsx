@@ -74,32 +74,59 @@ const colors = {
   light: "#ffffff",
 };
 
-// Init
-const response = await simulationApiSimple.getSimulation('684438c3f08c530097664fa8');
-let id = '684438c3f08c530097664fa8';
 // Generate sample bacteria function moved outside to prevent recreation
-const generateSampleBacteria = (response : Simulation): Bacterium[] => {
+const generateSampleBacteria = (simulation?: Simulation): Bacterium[] => {
+  if (!simulation?.currentState?.bacteria) {
+    // Return empty array if no simulation data
+    return [];
+  }
+  
   const sampleBacteria: Bacterium[] = [];
-  // const centerX = 300;
-  // const centerY = 300;
-  // const maxRadius = 250;
-  const bacteriaObj = response.simulation.currentState.bacteria;
-  console.log('Halo:', bacteriaObj);
+  const bacteriaObj = simulation.currentState.bacteria;
+  console.log('Bacteria data:', bacteriaObj);
+  
   for (let i = 0; i < bacteriaObj.length; i++) {
     const currentBacterium = bacteriaObj[i];
-    // const id = currentBacterium.id;
-    // // const angle = Math.random() * 2 * Math.PI;
-    // // const radius = Math.random() * maxRadius;
-    // const x = currentBacterium.x;
-    // const y = currentBacterium.y;
-    // const isResistant = currentBacterium.isResistant;
-
     const bacterium: Bacterium = currentBacterium;
-
     sampleBacteria.push(bacterium);
   }
+  
   console.log(sampleBacteria);
   return sampleBacteria;
+};
+
+// Generate placeholder bacteria for empty state
+const generatePlaceholderBacteria = (): Bacterium[] => {
+  const placeholderBacteria: Bacterium[] = [];
+  const centerX = 300;
+  const centerY = 300;
+  const maxRadius = 100;
+
+  // Generate a small sample of bacteria to show what the simulation would look like
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random() * 2 * Math.PI;
+    const radius = Math.random() * maxRadius;
+    const x = centerX + Math.cos(angle) * radius;
+    const y = centerY + Math.sin(angle) * radius;
+    const isResistant = Math.random() > 0.8; // 20% chance of being resistant
+
+    const bacterium: Bacterium = {
+      id: `placeholder-${i}`,
+      x,
+      y,
+      isResistant,
+      fitness: Math.random() * 0.5 + 0.5, // Random fitness between 0.5-1.0
+      age: Math.floor(Math.random() * 10),
+      generation: 0,
+      parentId: undefined,
+      color: isResistant ? "#ff4444" : "#44ff44",
+      size: Math.random() * 2 + 3, // Random size between 3-5
+    };
+
+    placeholderBacteria.push(bacterium);
+  }
+
+  return placeholderBacteria;
 };
 
 export default function Dashboard() {
@@ -129,10 +156,11 @@ export default function Dashboard() {
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [savedSimulations, setSavedSimulations] = useState<Simulation[]>([]);
   const [savingSimulation, setSavingSimulation] = useState(false);
-  const [simulation, setSimulation] = useState<Simulation>(undefined);
-  // Initialize sample data on mount
+  const [simulation, setSimulation] = useState<Simulation | undefined>(undefined);
+  
+  // Initialize with placeholder bacteria to show what simulation would look like
   useEffect(() => {
-    setSampleBacteria(generateSampleBacteria(response));
+    setSampleBacteria(generatePlaceholderBacteria());
   }, []);
 
   // Load saved simulations when load modal opens
@@ -155,14 +183,12 @@ export default function Dashboard() {
   const handleSimulationSubmit = useCallback(
     async (parameters: SimulationParametersInput) => {
       try {
-        console.log(id);
         const response = await simulationApiSimple.createSimulation(simulationName, parameters);
-        console.log("Ini dari memoized itu lho: ", response);
-        id = response.simulation.id;
-        // Update petri dish
+        console.log("Simulation created successfully: ", response);
+        
+        // Update petri dish with actual simulation data
         setSampleBacteria(generateSampleBacteria(response));
-        setSimulation(response.simulation);
-        console.log(id);
+        setSimulation(response);
       } catch (err) {
         console.error("Failed to create simulation:", err);
       }
@@ -193,9 +219,11 @@ export default function Dashboard() {
     try {
       if (simulation) {
         await resetSimulation();
+        // After reset, regenerate bacteria from updated simulation
+        setSampleBacteria(generateSampleBacteria(simulation));
       } else {
-        // If no simulation exists, just regenerate sample bacteria
-        setSampleBacteria(generateSampleBacteria(response));
+        // If no simulation exists, show placeholder bacteria
+        setSampleBacteria(generatePlaceholderBacteria());
       }
     } catch (err) {
       console.error("Failed to reset simulation:", err);
@@ -624,6 +652,48 @@ export default function Dashboard() {
                         console.log("Clicked bacterium:", bacterium);
                       }}
                     />
+                    
+                    {/* No Simulation State Overlay */}
+                    {!simulation && (
+                      <div
+                        className="absolute inset-0 rounded-xl flex items-center justify-center z-20"
+                        style={{
+                          backgroundColor: `${colors.surface.a0}90`,
+                          backdropFilter: "blur(12px)",
+                        }}
+                      >
+                        <div className="text-center max-w-md p-6">
+                          <LuFlaskConical 
+                            className="h-16 w-16 mx-auto mb-4 opacity-50"
+                            style={{ color: colors.primary.a0 }}
+                          />
+                          <h3 
+                            className="text-xl font-medium mb-2"
+                            style={{ color: colors.light }}
+                          >
+                            Start Your First Simulation
+                          </h3>
+                          <p 
+                            className="text-sm mb-4 leading-relaxed"
+                            style={{ color: colors.surface.a50 }}
+                          >
+                            Set your simulation parameters in the form below and click "Create Simulation" 
+                            to begin exploring bacterial evolution and antibiotic resistance.
+                          </p>
+                          <div 
+                            className="text-xs px-3 py-2 rounded-lg inline-block"
+                            style={{ 
+                              backgroundColor: `${colors.primary.a0}20`,
+                              color: colors.primary.a20,
+                              border: `1px solid ${colors.primary.a0}30`
+                            }}
+                          >
+                            Placeholder bacteria shown for preview
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     {!isConnected && displayBacteria === sampleBacteria && (
                       <div
                         className="absolute bottom-4 left-4 px-3 py-2 rounded-lg text-sm border"
