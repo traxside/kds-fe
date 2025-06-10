@@ -178,7 +178,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   const graphDataForVis = React.useMemo(() => {
     const endCullingTimer = performanceMonitor.startTiming("node-culling-vis");
 
-    if (!bacteria || !Array.isArray(bacteria)) {
+    if (!bacteria || !Array.isArray(bacteria) || bacteria.length === 0) {
       endCullingTimer();
       return { nodes: [], edges: [] };
     }
@@ -191,11 +191,19 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
           maxDisplayNodes,
           enableSpatialSampling
       );
-      setCullingStats({
-        originalCount: bacteria.length,
-        displayCount: displayBacteria.length,
-        cullingRatio:
-            (bacteria.length - displayBacteria.length) / bacteria.length,
+      setCullingStats(prev => {
+        const newStats = {
+          originalCount: bacteria.length,
+          displayCount: displayBacteria.length,
+          cullingRatio: (bacteria.length - displayBacteria.length) / bacteria.length,
+        };
+        // Only update if actually different to prevent unnecessary re-renders
+        if (!prev || 
+            prev.originalCount !== newStats.originalCount || 
+            prev.displayCount !== newStats.displayCount) {
+          return newStats;
+        }
+        return prev;
       });
     } else {
       displayBacteria = bacteria;
@@ -246,7 +254,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       nodes: nodes || [],
       edges: edges || [],
     };
-  }, [bacteria, maxDisplayNodes, enableSpatialSampling]);
+  }, [bacteria, maxDisplayNodes, enableSpatialSampling, performanceMonitor, nodeCuller]);
 
   // Remove D3 based updatePerformanceMetrics and handleZoom
   // const updatePerformanceMetrics = useCallback(() => { ... });
@@ -257,13 +265,13 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
   // const configureForces = useCallback(() => { ... });
   // useEffect(() => { /* configureForces logic */ }, [configureForces]);
 
-  // Define a completely stable key that doesn't change with container size
+  // Define a completely stable key that only changes when component remounts
   const stableKey = React.useMemo(() => {
-    return `graph-${graphDataForVis.nodes.length}`;
-  }, [graphDataForVis.nodes.length]);
+    return `graph-stable-${Date.now()}`;
+  }, []); // Empty dependency array means this only runs once
 
   // Define options for react-graph-vis
-  const options: any = { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const options = React.useMemo(() => ({
     autoResize: false, // Disable autoResize completely
     width: '100%',
     height: '100%',
@@ -343,10 +351,10 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       improvedLayout: true,
       randomSeed: 42, // Consistent layout
     }
-  };
+  }), []); // No dependencies - this should be completely static
 
   // Define events for react-graph-vis
-  const events: any = { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const events = React.useMemo(() => ({
     click: (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
       if (event.nodes && event.nodes.length > 0 && onBacteriumClick) {
         const selectedNodeId = event.nodes[0];
@@ -369,7 +377,7 @@ const PetriDish = memo<PetriDishProps>(function PetriDish({
       // Prevent context menu to avoid interference with tooltips
       event.event.preventDefault();
     }
-  };
+  }), [graphDataForVis.nodes, onBacteriumClick]); // Stable dependencies
   
   // The useForceConfiguration hook is no longer needed with react-graph-vis
   // const forceConfigHook = useForceConfiguration(

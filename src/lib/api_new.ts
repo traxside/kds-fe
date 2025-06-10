@@ -4,6 +4,8 @@ import { SimulationParametersInput, Simulation } from "@/types/simulation";
 // Configuration constants
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const HEALTH_BASE_URL = 
+    process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:5000";
 const DEFAULT_TIMEOUT = 10000; // 10 seconds
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second base delay
@@ -252,8 +254,17 @@ export const simulationApiSimple = {
 
     // Health check
     async healthCheck(signal?: AbortSignal): Promise<unknown> {
+         // Create a separate instance for health check without /api prefix
+        const healthApi = axios.create({
+            baseURL: HEALTH_BASE_URL,
+            timeout: DEFAULT_TIMEOUT,
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+        
         return retryRequest(() =>
-            api.get<unknown>("/health", { signal })
+            healthApi.get<unknown>("/health", { signal })
         );
     },
 

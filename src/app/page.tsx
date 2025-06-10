@@ -677,8 +677,7 @@ export default function Dashboard() {
                             className="text-sm mb-4 leading-relaxed"
                             style={{ color: colors.surface.a50 }}
                           >
-                            Set your simulation parameters in the form below and click "Create Simulation" 
-                            to begin exploring bacterial evolution and antibiotic resistance.
+                            Set the simulation parameters using the controls on the right, then click "Start Simulation" to explore bacterial evolution and antibiotic resistance.
                           </p>
                           <div 
                             className="text-xs px-3 py-2 rounded-lg inline-block"
@@ -688,7 +687,7 @@ export default function Dashboard() {
                               border: `1px solid ${colors.primary.a0}30`
                             }}
                           >
-                            Placeholder bacteria shown for preview
+                            The bacteria shown illustrate key simulation behaviors.
                           </div>
                         </div>
                       </div>

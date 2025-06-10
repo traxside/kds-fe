@@ -99,9 +99,33 @@ const SimulationControls = memo<SimulationControlsProps>(function SimulationCont
   const startTimeRef = useRef<number | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Create stable refs for handlers to prevent re-creation
+  const handlersRef = useRef({
+    startSimulation,
+    stopSimulation,
+    stepSimulation,
+    resetSimulation,
+  });
+
+  // Update refs when handlers change
+  useEffect(() => {
+    handlersRef.current = {
+      startSimulation,
+      stopSimulation,
+      stepSimulation,
+      resetSimulation,
+    };
+  }, [startSimulation, stopSimulation, stepSimulation, resetSimulation]);
+
   // Handle simulation speed change
   const handleSpeedChange = useCallback(async (value: number[]) => {
     const newSpeed = value[0];
+    
+    // Prevent unnecessary updates if speed hasn't actually changed
+    if (newSpeed === simulationSpeed[0]) {
+      return;
+    }
+    
     setSimulationSpeed(value);
     
     // Store in localStorage for persistence
@@ -116,7 +140,7 @@ const SimulationControls = memo<SimulationControlsProps>(function SimulationCont
         // Optionally show error to user or revert the slider
       }
     }
-  }, [simulation?.id]);
+  }, [simulation?.id, simulationSpeed]);
 
   // Handle auto-save toggle
   const handleAutoSaveToggle = useCallback((enabled: boolean) => {
@@ -165,14 +189,15 @@ const SimulationControls = memo<SimulationControlsProps>(function SimulationCont
     const currentSpeed = simulation?.currentState?.simulationSpeed;
     if (currentSpeed && currentSpeed !== simulationSpeed[0]) {
       setSimulationSpeed([currentSpeed]);
-    } else if (savedSpeed && !currentSpeed) {
+    } else if (savedSpeed && !currentSpeed && simulationSpeed[0] === 1) {
+      // Only set from localStorage if we're still at default value
       setSimulationSpeed([JSON.parse(savedSpeed)]);
     }
     
     if (savedAutoSave) {
       setAutoSaveEnabled(JSON.parse(savedAutoSave));
     }
-  }, [simulation?.currentState?.simulationSpeed, simulationSpeed]);
+  }, [simulation?.currentState?.simulationSpeed]);
 
   // Track elapsed time
   useEffect(() => {
@@ -203,7 +228,7 @@ const SimulationControls = memo<SimulationControlsProps>(function SimulationCont
     };
   }, [isSimulationRunning, simulation]);
 
-  // Memoized keyboard event handler
+  // Memoized keyboard event handler with stable dependencies
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Don't trigger shortcuts if user is typing in an input
     if (
@@ -218,23 +243,23 @@ const SimulationControls = memo<SimulationControlsProps>(function SimulationCont
       case "spacebar":
         e.preventDefault();
         if (isSimulationRunning) {
-          stopSimulation();
+          handlersRef.current.stopSimulation();
         } else if (simulation && !isLoading) {
-          startSimulation();
+          handlersRef.current.startSimulation();
         }
         break;
       case "n":
       case "arrowright":
         e.preventDefault();
         if (simulation && !isLoading && !isSimulationRunning) {
-          stepSimulation();
+          handlersRef.current.stepSimulation();
         }
         break;
       case "r":
         if (e.ctrlKey || e.metaKey) {
           e.preventDefault();
           if (simulation && !isLoading) {
-            resetSimulation();
+            handlersRef.current.resetSimulation();
           }
         }
         break;
@@ -243,7 +268,7 @@ const SimulationControls = memo<SimulationControlsProps>(function SimulationCont
         setShowShortcuts(prev => !prev);
         break;
     }
-  }, [isSimulationRunning, simulation, isLoading, startSimulation, stopSimulation, stepSimulation, resetSimulation]);
+  }, [isSimulationRunning, simulation, isLoading]);
 
   // Keyboard shortcuts
   useEffect(() => {
